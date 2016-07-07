@@ -1,11 +1,26 @@
+
+import csv
 import fpdf
 import argparse
 import re
 import urllib2
 
-class Penger:
 
-    config = {}
+class Penger:
+    def get_hourly_rate(self):
+        grade = self.config['paygrade']
+        if self.config.get('rate',None) is not None:
+            return self.config.get('rate')
+
+        connection = urllib2.urlopen(self.paygrade_table).read().replace(',','.')
+        lines = connection.split('\n')
+
+        if(grade > 101):
+            print "Dude, your are making waaay too much money"
+            self.config['rate'] = 0
+
+        line = lines[grade-19]
+        self.config['rate'] = float(line.split(';')[2])
 
     def parse_commands(self):
         parser = argparse.ArgumentParser(description='Timeliste generator -- Nikolas Papaioannou <nikolasp@ifi.uio.no>'
@@ -28,26 +43,28 @@ class Penger:
         re_config = re.compile(ur'^(.*?):\s*(\S*).*?$', re.MULTILINE)
 
         config_res = re.findall(re_config, config_str)
-        # print config_res
 
-        argumentnumber = 6
-        if len(config_res) != argumentnumber:
+        arg_number = 6
+        if len(config_res) != arg_number:
             print "Error with .timerc file, wrong number of arguments found in the file\nShould be {0} arguments, found {1}". \
-                format(argumentnumber, len(config_res))
+                format(arg_number, len(config_res))
             exit(1)
 
         for pair in config_res:
             self.config[pair[0]] = pair[1]
 
-    def __init__(self):
+        self.config['tax percentage'] = float(self.config['tax percentage'])
+        self.config['paygrade'] = int(self.config['paygrade'])
 
+    def __init__(self):
+        self.config = {}
         # NOTE: This is manually updated by Nikolas, yell at him if he has forgotten to update the table
         self.paygrade_table = 'http://nikolasp.at.ifi.uio.no/C-tabell.csv'
         self.parse_commands()
         self.parse_config()
+        self.get_hourly_rate()
 
-        connection = urllib2.urlopen(self.paygrade_table)
-        comma = connection.read()
+
 
 epilog = '''
 Example of timesheet content:

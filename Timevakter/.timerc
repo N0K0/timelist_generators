@@ -2,5 +2,5 @@ tax percentage: 0           # how much you are taxed
 paygrade:       40          # what paygrade you got
 timesheet:      ~/timer.txt # placement of your timesheet
 pnr:            29049449192 # leave blank if you do not wish this to be added
-position:      Timevakt    # name of your posistion
+position:      Timevakt     # name of your posistion
 place:          ifi         # place of work
