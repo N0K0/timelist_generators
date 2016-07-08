@@ -1,10 +1,18 @@
 import argparse
 import re
 import urllib2
+import sys
 from datetime import datetime, timedelta
 
 paygrade_table = 'http://nikolasp.at.ifi.uio.no/C-tabell.csv'
+sys.tracebacklimit=1
 
+class DateError(Exception):
+    def __init__(self,message):
+        self.message = message
+
+    def __str__(self):
+        return repr(self.message)
 
 class Penger:
     def get_hourly_rate(self):
@@ -86,6 +94,16 @@ class Penger:
             print "Start: {}\nEnd: {}".format(date_start, date_end)
             return date_start, date_end
 
+        def parse_date(date_str):
+            for date_format in date_str_formats:
+                try:
+                    return datetime.strptime(date_str,date_format)
+                except ValueError:
+                    pass
+
+            print "Error parsing the following date: {}".format(date_str)
+            exit(1)
+
         sheet_data = ''
         try:
             sheet = open(self.config.get('timesheet'), 'r')
@@ -97,9 +115,14 @@ class Penger:
         re_sheet = re.compile(ur'(^[0-9- :]+)([ a-zA-Z]*)?(#[ \S]*$)?', re.MULTILINE)
 
         sheet_data = re.findall(re_sheet, sheet_data)
-        date_range()
-        for date in sheet_data:
-            print date
+
+        for entry in sheet_data:
+            #print entry
+            entry_date = entry[0].split(':')[0]
+            parsed_date = parse_date(entry_date)
+            #print parsed_date
+
+        start,end = date_range()
 
     def __init__(self):
         self.config = {}
@@ -111,11 +134,12 @@ class Penger:
         self.parse_timesheet()
 
 
+date_str_formats = ['%Y-%m-%d','%y%m','%y%m%d']
+
 epilog = '''
 Example of timesheet content:
 
     YYYY-MM-DD: hh:mm-hh:mm # commentary
-    YYMMDD: hh-hh
     YYMM: tt # Javakurs
     YYMMDD: hh-hh # Langfredag
 
