@@ -1,3 +1,4 @@
+name:           Nikolas Papaioannou
 tax percentage: 0           # how much you are taxed
 paygrade:       40          # what paygrade you got
 timesheet:      timer.txt # placement of your timesheet

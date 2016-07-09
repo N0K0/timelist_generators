@@ -2,6 +2,7 @@ import argparse
 import re
 import urllib2
 import sys
+from fpdf import FPDF
 from datetime import datetime, timedelta
 
 paygrade_table = 'http://nikolasp.at.ifi.uio.no/C-tabell.csv'
@@ -13,6 +14,20 @@ class DateError(Exception):
 
     def __str__(self):
         return repr(self.message)
+
+
+class PDF(FPDF):
+    def header(self):
+        #Logo
+        self.image('uio_seal_a_eng.png',h=15,)
+        self.set_font('Helvetica', 'B', 18)
+        self.cell(140,ln=0)
+        self.cell(40,h=-12,txt='Timesheet',ln=1)
+        # Line break
+        self.ln(20)
+
+
+
 
 class Penger:
     def get_hourly_rate(self):
@@ -48,11 +63,11 @@ class Penger:
         config = open('.timerc', 'r')
         config_str = config.read()
 
-        re_config = re.compile(ur'^(.*?):\s*(\S*).*?$', re.MULTILINE)
+        re_config = re.compile(ur'(.*?):\s*([\\\~.\/0-9a-zA-Z ]*)(\#|$)', re.MULTILINE)
 
         config_res = re.findall(re_config, config_str)
 
-        arg_number = 6
+        arg_number = 7
         if len(config_res) != arg_number:
             print "Error with .timerc file, wrong number of arguments found in the file\n" \
                   "Should be {0} arguments, found {1}". \
@@ -97,7 +112,7 @@ class Penger:
         def parse_date(date_str):
             for date_format in date_str_formats:
                 try:
-                    return datetime.strptime(date_str,date_format)
+                    return datetime.strptime(date_str,date_format) + timedelta(seconds=1)
                 except ValueError:
                     pass
 
@@ -116,13 +131,24 @@ class Penger:
 
         sheet_data = re.findall(re_sheet, sheet_data)
 
+        date_start,date_end = date_range()
+
+        self.filtered_entires = []
+
         for entry in sheet_data:
             #print entry
             entry_date = entry[0].split(':')[0]
             parsed_date = parse_date(entry_date)
-            #print parsed_date
+            if date_start <= parsed_date <= date_end:
+                self.filtered_entires.append(entry)
 
-        start,end = date_range()
+    def generate_PDF(self):
+        pdf = PDF()
+        pdf.add_page()
+
+        pdf.multi_cell(w=200,h=10,txt="Name: {0}\nStilling: {1}\n".format(self.config['name'],self.config['position']))
+
+        pdf.output('test.pdf')
 
     def __init__(self):
         self.config = {}
@@ -132,6 +158,8 @@ class Penger:
         self.parse_commands()
         self.parse_config()
         self.parse_timesheet()
+        self.generate_PDF()
+
 
 
 date_str_formats = ['%Y-%m-%d','%y%m','%y%m%d']
@@ -145,7 +173,7 @@ Example of timesheet content:
 
 
 Formatting for the .timerc file:
-
+    name:           Nikolas Papaioannou
     tax percentage: 5           # how much you are taxed
     paygrade:       40          # what paygrade you got
     timesheet:      ~/timer.txt # placement of your timesheet
