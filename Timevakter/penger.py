@@ -80,6 +80,41 @@ class Penger:
         self.config['tax percentage'] = float(self.config['tax percentage'])
         self.config['paygrade'] = int(self.config['paygrade'])
 
+    def parse_date(self,date_str):
+        for date_format in date_str_formats:
+            try:
+                return datetime.strptime(date_str, date_format) + timedelta(seconds=1)
+            except ValueError:
+                pass
+
+        print "Error parsing the following date: {}".format(date_str)
+        exit(1)
+
+    def parse_hours(self,hour_str):
+        for hour_format in hour_str_formats:
+            try:
+                return datetime.strptime(hour_str, hour_format)
+            except ValueError:
+                pass
+
+        print "Error parsing the following timerange: {}".format(hour_str)
+        exit(1)
+
+    def get_hours(self,hour_str):
+        print hour_str
+        p = re.compile(ur':(.*)$', re.MULTILINE)
+
+        time_res = re.search(p,hour_str)
+        time_str = str(time_res.groups(0)[0]).strip()
+        time_str = time_str.split('-')
+        time_from, time_to = self.parse_hours(time_str[0]),self.parse_hours(time_str[1])
+        time_delta = time_to-time_from
+
+        hour_sum = time_delta.total_seconds()/3600
+
+        return hour_sum,time_from,time_to
+
+
     def parse_timesheet(self):
 
         date_today = datetime.today()
@@ -109,16 +144,6 @@ class Penger:
             print "Start: {}\nEnd: {}".format(date_start, date_end)
             return date_start, date_end
 
-        def parse_date(date_str):
-            for date_format in date_str_formats:
-                try:
-                    return datetime.strptime(date_str,date_format) + timedelta(seconds=1)
-                except ValueError:
-                    pass
-
-            print "Error parsing the following date: {}".format(date_str)
-            exit(1)
-
         sheet_data = ''
         try:
             sheet = open(self.config.get('timesheet'), 'r')
@@ -134,11 +159,12 @@ class Penger:
         date_start,date_end = date_range()
 
         self.filtered_entires = []
+        self.sum_hour = 0
 
         for entry in sheet_data:
             #print entry
             entry_date = entry[0].split(':')[0]
-            parsed_date = parse_date(entry_date)
+            parsed_date = self.parse_date(entry_date)
             if date_start <= parsed_date <= date_end:
                 self.filtered_entires.append(entry)
 
@@ -156,21 +182,61 @@ class Penger:
         #Done creating info and toptext
 
         #Starting to create cells
+        #Creating the header
         pdf.set_font('Arial',size=12)
-        cell_height = 12
+        cell_height = 6
+        time_size = 20
+        note_size = 74
+        sign_size = 30
 
-        pdf.cell(25,cell_height,txt="Date",border=1,ln=0,align='C')
-        pdf.cell(20,cell_height,txt="Week",border=1,ln=0,align='C')
-        pdf.cell(40,cell_height/2,txt="Time",border=1,ln=2,align='C')
+        pdf.cell(25,cell_height*2,txt="Date",border=1,ln=0,align='C')
+        pdf.cell(20,cell_height*2,txt="Week",border=1,ln=0,align='C')
+        pdf.cell(time_size*2,cell_height,txt="Time",border=1,ln=2,align='C')
 
         x,y = pdf.get_x(),pdf.get_y()
 
-        pdf.cell(20,cell_height/2,txt="From",border=1,ln=0,align='C')
-        pdf.cell(20,cell_height/2,txt="To",border=1,align='C')
-        pdf.set_xy(x+40,y-cell_height/2)
-        pdf.cell(80,cell_height,txt="Notes",border=1,ln=0,align='C')
+        pdf.cell(time_size,cell_height,txt="From",border=1,ln=0,align='C')
+        pdf.cell(time_size,cell_height,txt="To",border=1,align='C')
+        pdf.set_xy(x+time_size*2,y-cell_height)
+        pdf.cell(note_size,cell_height*2,txt="Notes",border=1,ln=0,align='C')
         #TODO: Remember to stuff total hours into this field too
+        pdf.cell(sign_size,cell_height*2,txt="Sign",border=1,ln=1,align='C')
 
+        #Done creating top row
+        pdf.set_font('Arial',size=12,style='b')
+
+        for entry in self.filtered_entires:
+            entry_date = entry[0].split(':')
+            datetime_obj = self.parse_date(entry_date[0])
+            datetime_str = datetime_obj.strftime('%Y-%m-%d')
+
+            week_num = str(datetime_obj.isocalendar()[1])
+
+            time_sum,time_from,time_to = self.get_hours(entry[0])
+            print time_sum,time_from,time_to
+
+            time_from = time_from.strftime('%H:%M')
+            time_to = time_to.strftime('%H:%M')
+
+            self.sum_hour += time_sum
+            print self.sum_hour
+
+            pdf.cell(25,cell_height,txt=datetime_str,ln=0,border=1,align='C') #Date cell
+            pdf.cell(20,cell_height,txt=week_num,ln=0,border=1,align='C') #Wekk number cell
+            pdf.cell(time_size,cell_height,border=1,txt=time_from) #From time
+            pdf.cell(time_size,cell_height,border=1,txt=time_to) #To time
+            pdf.cell(note_size,cell_height,border=1,txt=str(entry[2])) #Notes
+            pdf.cell(sign_size,cell_height,border=1,ln=1)
+
+
+        #After writing all the entries, we have an other entry as a note with the number of hours total
+
+        pdf.cell(25, cell_height, ln=0, border=0, align='C')  # Date cell
+        pdf.cell(20, cell_height, ln=0, border=0, align='C')  # Wekk number cell
+        pdf.cell(time_size, cell_height, border=0)  # From time
+        pdf.cell(time_size, cell_height, border=0)  # To time
+        pdf.cell(note_size, cell_height, border=1,txt="Total hours: {}".format(self.sum_hour))  # Notes
+        pdf.cell(sign_size, cell_height, border=0, ln=1)
 
         pdf.output('test.pdf')
 
@@ -187,6 +253,7 @@ class Penger:
 
 
 date_str_formats = ['%Y-%m-%d','%y%m','%y%m%d']
+hour_str_formats = ['%H:%M', '%H']
 
 epilog = '''
 Example of timesheet content:
