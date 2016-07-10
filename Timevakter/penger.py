@@ -146,7 +146,31 @@ class Penger:
         pdf = PDF()
         pdf.add_page()
 
-        pdf.multi_cell(w=200,h=10,txt="Name: {0}\nStilling: {1}\n".format(self.config['name'],self.config['position']))
+        pdf.set_font('Arial')
+        pdf.multi_cell(w=100, h=8, txt="Name: {0}\nStilling: {1}\nPaygrade: {2}\nPlace of work: {3}\nSSN: {4}"
+                       .format(self.config['name'], self.config['position'], self.config['paygrade'],
+                               self.config['place'],
+                               self.config['pnr']), align='L',)
+
+        pdf.ln(10)
+        #Done creating info and toptext
+
+        #Starting to create cells
+        pdf.set_font('Arial',size=12)
+        cell_height = 12
+
+        pdf.cell(25,cell_height,txt="Date",border=1,ln=0,align='C')
+        pdf.cell(20,cell_height,txt="Week",border=1,ln=0,align='C')
+        pdf.cell(40,cell_height/2,txt="Time",border=1,ln=2,align='C')
+
+        x,y = pdf.get_x(),pdf.get_y()
+
+        pdf.cell(20,cell_height/2,txt="From",border=1,ln=0,align='C')
+        pdf.cell(20,cell_height/2,txt="To",border=1,align='C')
+        pdf.set_xy(x+40,y-cell_height/2)
+        pdf.cell(80,cell_height,txt="Notes",border=1,ln=0,align='C')
+        #TODO: Remember to stuff total hours into this field too
+
 
         pdf.output('test.pdf')
 
