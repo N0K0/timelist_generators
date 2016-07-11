@@ -4,6 +4,7 @@ import urllib2
 import sys
 from fpdf import FPDF
 from datetime import datetime, timedelta
+import math
 
 paygrade_table = 'http://nikolasp.at.ifi.uio.no/C-tabell.csv'
 sys.tracebacklimit=1
@@ -213,20 +214,38 @@ class Penger:
             week_num = str(datetime_obj.isocalendar()[1])
 
             time_sum,time_from,time_to = self.get_hours(entry[0])
-            print time_sum,time_from,time_to
+            #print time_sum,time_from,time_to
 
             time_from = time_from.strftime('%H:%M')
             time_to = time_to.strftime('%H:%M')
 
             self.sum_hour += time_sum
-            print self.sum_hour
+            #print self.sum_hour
+
+            note = str(entry[2])
+            note = note[1:]
+
+            note_height = cell_height
+
+            scalar = math.ceil(len(note)/30.0)
+            if scalar > 1:
+                print scalar
+                cell_height *= scalar
 
             pdf.cell(25,cell_height,txt=datetime_str,ln=0,border=1,align='C') #Date cell
             pdf.cell(20,cell_height,txt=week_num,ln=0,border=1,align='C') #Wekk number cell
             pdf.cell(time_size,cell_height,border=1,txt=time_from) #From time
             pdf.cell(time_size,cell_height,border=1,txt=time_to) #To time
-            pdf.cell(note_size,cell_height,border=1,txt=str(entry[2])) #Notes
-            pdf.cell(sign_size,cell_height,border=1,ln=1)
+
+            x,y = pdf.get_x(),pdf.get_y()
+
+            pdf.multi_cell(note_size,note_height,border=1,txt=note) #Notes
+            pdf.set_xy(x+note_size,y)
+            pdf.cell(sign_size,cell_height,border=1,ln=1) #Sign
+
+            if len(note) > 30:
+                cell_height /= scalar
+                note_height = cell_height
 
 
         #After writing all the entries, we have an other entry as a note with the number of hours total
