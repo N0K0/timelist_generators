@@ -7,10 +7,11 @@ from datetime import datetime, timedelta
 import math
 
 paygrade_table = 'http://nikolasp.at.ifi.uio.no/C-tabell.csv'
-sys.tracebacklimit=1
+sys.tracebacklimit = 1
+
 
 class DateError(Exception):
-    def __init__(self,message):
+    def __init__(self, message):
         self.message = message
 
     def __str__(self):
@@ -19,15 +20,13 @@ class DateError(Exception):
 
 class PDF(FPDF):
     def header(self):
-        #Logo
-        self.image('uio_seal_a_eng.png',h=15,)
+        # Logo
+        self.image('uio_seal_a_eng.png', h=15, )
         self.set_font('Helvetica', 'B', 18)
-        self.cell(140,ln=0)
-        self.cell(40,h=-12,txt='Timesheet',ln=1)
+        self.cell(140, ln=0)
+        self.cell(40, h=-12, txt='Timesheet', ln=1)
         # Line break
         self.ln(20)
-
-
 
 
 class Penger:
@@ -64,7 +63,7 @@ class Penger:
         config = open('.timerc', 'r')
         config_str = config.read()
 
-        re_config = re.compile(ur'(.*?):\s*([\\\~.\/0-9a-zA-Z ]*)(\#|$)', re.MULTILINE)
+        re_config = re.compile(ur'(.*?):\s*([\\~./0-9a-zA-Z ]*)(#|$)', re.MULTILINE)
 
         config_res = re.findall(re_config, config_str)
 
@@ -81,7 +80,8 @@ class Penger:
         self.config['tax percentage'] = float(self.config['tax percentage'])
         self.config['paygrade'] = int(self.config['paygrade'])
 
-    def parse_date(self,date_str):
+    @staticmethod
+    def parse_date(date_str):
         for date_format in date_str_formats:
             try:
                 return datetime.strptime(date_str, date_format) + timedelta(seconds=1)
@@ -91,7 +91,8 @@ class Penger:
         print "Error parsing the following date: {}".format(date_str)
         exit(1)
 
-    def parse_hours(self,hour_str):
+    @staticmethod
+    def parse_hours(hour_str):
         for hour_format in hour_str_formats:
             try:
                 return datetime.strptime(hour_str, hour_format)
@@ -101,25 +102,31 @@ class Penger:
         print "Error parsing the following timerange: {}".format(hour_str)
         exit(1)
 
-    def get_hours(self,hour_str):
+    def get_hours(self, hour_str):
         print hour_str
         p = re.compile(ur':(.*)$', re.MULTILINE)
 
-        time_res = re.search(p,hour_str)
+        hour_sum = 0
+
+        time_res = re.search(p, hour_str)
         time_str = str(time_res.groups(0)[0]).strip()
         time_str = time_str.split('-')
-        time_from, time_to = self.parse_hours(time_str[0]),self.parse_hours(time_str[1])
-        time_delta = time_to-time_from
+        if len(time_str) == 1:
+            time_from = None
+            time_to = None
+            hour_sum = int(time_str[0])
+        else:
+            time_from, time_to = self.parse_hours(time_str[0]), self.parse_hours(time_str[1])
+            time_delta = time_to - time_from
+            hour_sum = time_delta.total_seconds() / 3600
 
-        hour_sum = time_delta.total_seconds()/3600
-
-        return hour_sum,time_from,time_to
-
+        return hour_sum, time_from, time_to
 
     def parse_timesheet(self):
 
         date_today = datetime.today()
 
+        # noinspection PyShadowingNames
         def date_range():
             if self.args.y and self.args.m:
                 print "m/y found"
@@ -157,18 +164,16 @@ class Penger:
 
         sheet_data = re.findall(re_sheet, sheet_data)
 
-        date_start,date_end = date_range()
-
-        self.filtered_entires = []
-        self.sum_hour = 0
+        date_start, date_end = date_range()
 
         for entry in sheet_data:
-            #print entry
+            # print entry
             entry_date = entry[0].split(':')[0]
             parsed_date = self.parse_date(entry_date)
             if date_start <= parsed_date <= date_end:
                 self.filtered_entires.append(entry)
 
+    # noinspection PyPep8Naming
     def generate_PDF(self):
         pdf = PDF()
         pdf.add_page()
@@ -177,34 +182,34 @@ class Penger:
         pdf.multi_cell(w=100, h=8, txt="Name: {0}\nStilling: {1}\nPaygrade: {2}\nPlace of work: {3}\nSSN: {4}"
                        .format(self.config['name'], self.config['position'], self.config['paygrade'],
                                self.config['place'],
-                               self.config['pnr']), align='L',)
+                               self.config['pnr']), align='L', )
 
         pdf.ln(10)
-        #Done creating info and toptext
+        # Done creating info and toptext
 
-        #Starting to create cells
-        #Creating the header
-        pdf.set_font('Arial',size=12)
+        # Starting to create cells
+        # Creating the header
+        pdf.set_font('Arial', size=12)
         cell_height = 6
         time_size = 20
         note_size = 74
         sign_size = 30
 
-        pdf.cell(25,cell_height*2,txt="Date",border=1,ln=0,align='C')
-        pdf.cell(20,cell_height*2,txt="Week",border=1,ln=0,align='C')
-        pdf.cell(time_size*2,cell_height,txt="Time",border=1,ln=2,align='C')
+        pdf.cell(25, cell_height * 2, txt="Date", border=1, ln=0, align='C')
+        pdf.cell(20, cell_height * 2, txt="Week", border=1, ln=0, align='C')
+        pdf.cell(time_size * 2, cell_height, txt="Time", border=1, ln=2, align='C')
 
-        x,y = pdf.get_x(),pdf.get_y()
+        x, y = pdf.get_x(), pdf.get_y()
 
-        pdf.cell(time_size,cell_height,txt="From",border=1,ln=0,align='C')
-        pdf.cell(time_size,cell_height,txt="To",border=1,align='C')
-        pdf.set_xy(x+time_size*2,y-cell_height)
-        pdf.cell(note_size,cell_height*2,txt="Notes",border=1,ln=0,align='C')
-        #TODO: Remember to stuff total hours into this field too
-        pdf.cell(sign_size,cell_height*2,txt="Sign",border=1,ln=1,align='C')
+        pdf.cell(time_size, cell_height, txt="From", border=1, ln=0, align='C')
+        pdf.cell(time_size, cell_height, txt="To", border=1, align='C')
+        pdf.set_xy(x + time_size * 2, y - cell_height)
+        pdf.cell(note_size, cell_height * 2, txt="Notes", border=1, ln=0, align='C')
+        # TODO: Remember to stuff total hours into this field too
+        pdf.cell(sign_size, cell_height * 2, txt="Sign", border=1, ln=1, align='C')
 
-        #Done creating top row
-        pdf.set_font('Arial',size=12,style='b')
+        # Done creating top row
+        pdf.set_font('Arial', size=12, style='b')
 
         for entry in self.filtered_entires:
             entry_date = entry[0].split(':')
@@ -213,48 +218,49 @@ class Penger:
 
             week_num = str(datetime_obj.isocalendar()[1])
 
-            time_sum,time_from,time_to = self.get_hours(entry[0])
-            #print time_sum,time_from,time_to
+            time_sum, time_from, time_to = self.get_hours(entry[0])
+            # print time_sum,time_from,time_to
 
-            time_from = time_from.strftime('%H:%M')
-            time_to = time_to.strftime('%H:%M')
+            if time_from is None and time_to is None:
+                time_to = 'Hours'
+                time_from = str(time_sum)
+            else:
+                time_from = time_from.strftime('%H:%M')
+                time_to = time_to.strftime('%H:%M')
 
             self.sum_hour += time_sum
-            #print self.sum_hour
 
             note = str(entry[2])
             note = note[1:]
 
             note_height = cell_height
 
-            scalar = math.ceil(len(note)/30.0)
+            scalar = math.ceil(len(note) / 30.0)
             if scalar > 1:
                 print scalar
                 cell_height *= scalar
 
-            pdf.cell(25,cell_height,txt=datetime_str,ln=0,border=1,align='C') #Date cell
-            pdf.cell(20,cell_height,txt=week_num,ln=0,border=1,align='C') #Wekk number cell
-            pdf.cell(time_size,cell_height,border=1,txt=time_from) #From time
-            pdf.cell(time_size,cell_height,border=1,txt=time_to) #To time
+            pdf.cell(25, cell_height, txt=datetime_str, ln=0, border=1, align='C')  # Date cell
+            pdf.cell(20, cell_height, txt=week_num, ln=0, border=1, align='C')  # Wekk number cell
+            pdf.cell(time_size, cell_height, border=1, txt=time_from)  # From time
+            pdf.cell(time_size, cell_height, border=1, txt=time_to)  # To time
 
-            x,y = pdf.get_x(),pdf.get_y()
+            x, y = pdf.get_x(), pdf.get_y()
 
-            pdf.multi_cell(note_size,note_height,border=1,txt=note) #Notes
-            pdf.set_xy(x+note_size,y)
-            pdf.cell(sign_size,cell_height,border=1,ln=1) #Sign
+            pdf.multi_cell(note_size, note_height, border=1, txt=note)  # Notes
+            pdf.set_xy(x + note_size, y)
+            pdf.cell(sign_size, cell_height, border=1, ln=1)  # Sign
 
-            if len(note) > 30:
+            if scalar > 1:
                 cell_height /= scalar
-                note_height = cell_height
 
-
-        #After writing all the entries, we have an other entry as a note with the number of hours total
+        # After writing all the entries, we have an other entry as a note with the number of hours total
 
         pdf.cell(25, cell_height, ln=0, border=0, align='C')  # Date cell
         pdf.cell(20, cell_height, ln=0, border=0, align='C')  # Wekk number cell
-        pdf.cell(time_size, cell_height, border=0)  # From time
-        pdf.cell(time_size, cell_height, border=0)  # To time
-        pdf.cell(note_size, cell_height, border=1,txt="Total hours: {}".format(self.sum_hour))  # Notes
+        pdf.cell(time_size, cell_height, border=0, align='C')  # From time
+        pdf.cell(time_size, cell_height, border=0, align='C')  # To time
+        pdf.cell(note_size, cell_height, border=1, txt="Total hours: {}".format(self.sum_hour))  # Notes
         pdf.cell(sign_size, cell_height, border=0, ln=1)
 
         pdf.output('test.pdf')
@@ -262,6 +268,9 @@ class Penger:
     def __init__(self):
         self.config = {}
         self.args = None
+        self.filtered_entires = []
+        self.sum_hour = 0
+
         # NOTE: This is manually updated by Nikolasp, yell at him if he has forgotten to update the table
 
         self.parse_commands()
@@ -270,8 +279,7 @@ class Penger:
         self.generate_PDF()
 
 
-
-date_str_formats = ['%Y-%m-%d','%y%m','%y%m%d']
+date_str_formats = ['%Y-%m-%d', '%y%m', '%y%m%d']
 hour_str_formats = ['%H:%M', '%H']
 
 epilog = '''
