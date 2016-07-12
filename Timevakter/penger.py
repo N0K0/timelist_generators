@@ -5,10 +5,13 @@ import sys
 from fpdf import FPDF
 from datetime import datetime, timedelta
 import math
+import os
+from subprocess import Popen,PIPE,STDOUT
+import shlex
+import time
 
 paygrade_table = 'http://nikolasp.at.ifi.uio.no/C-tabell.csv'
-sys.tracebacklimit = 1
-
+sys.tracebacklimit = 3
 
 class DateError(Exception):
     def __init__(self, message):
@@ -61,7 +64,6 @@ class Penger:
         parser.add_argument('-o', metavar='--output', type=str, default=None, help="name of the PDF file")
         self.args = parser.parse_args()
 
-
     def parse_config(self):
         config = open('.timerc', 'r')
         config_str = config.read()
@@ -107,8 +109,6 @@ class Penger:
 
     def get_hours(self, hour_str):
         p = re.compile(ur':(.*)$', re.MULTILINE)
-
-        hour_sum = 0
 
         time_res = re.search(p, hour_str)
         time_str = str(time_res.groups(0)[0]).strip()
@@ -169,12 +169,33 @@ class Penger:
             if date_start <= parsed_date <= date_end:
                 self.filtered_entires.append(entry)
 
-    def extra_actions(self): #This is the part that manages printing and mailing users
+    def extra_actions(self):  # This is the part that manages printing and mailing users
         if self.args.e:
-            raise NotImplementedError("email not implemented")
+            if 'nt' in os.name:
+                addr_to = self.args.e
+                subject = 'Timescript'
+                smtp = 'smtp.uio.no'
+                atta = os.path.abspath(self.config['outputname'])
+                print atta
+
+                #Run the powershell mail command here
+                args = shlex.split(r'powershell.exe Send-MailMessage -To {0} -From {0} -Subject {1} -SmtpServer {2} -Attachments "{3}"'
+                                   .format(addr_to,subject,smtp,atta))
+                print args
+
+                shell = Popen(args=args, shell = True, stdin = PIPE, stdout = PIPE,bufsize=0)
+
+                print shell.communicate()[0]
+
+            elif 'posix' in os.name:
+                return 0
+                #Run the bash mutt command here
+
+            else:
+                print "No clue what the give OS is"
+
         if self.args.p:
             raise NotImplementedError("Printing not implemented")
-
 
     # noinspection PyPep8Naming
     def generate_PDF(self):
@@ -269,13 +290,14 @@ class Penger:
         if self.args.o:
             file_name = self.args.o
 
-
         pdf.output(file_name)
+
+        self.config['outputname'] = file_name
 
     def summation(self):
         hourly_rate = self.get_hourly_rate()
         tax_rate = self.config['tax percentage']
-        tax = hourly_rate * self.sum_hour * tax_rate /100
+        tax = hourly_rate * self.sum_hour * tax_rate / 100
         income = hourly_rate * self.sum_hour - tax
         print summarazation.format(self.config['paygrade'], hourly_rate, self.sum_hour, hourly_rate * self.sum_hour,
                                    tax_rate, tax, income)
@@ -330,7 +352,6 @@ Taxation ({4})             {5}
 =================================
 Post-tax                   {6}
 '''
-
 
 if __name__ == '__main__':
     penger = Penger()
