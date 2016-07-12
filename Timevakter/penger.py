@@ -32,11 +32,13 @@ class PDF(FPDF):
 class Penger:
     def get_hourly_rate(self):
         grade = self.config['paygrade']
-        if self.config.get('rate', None) is not None:
-            return self.config.get('rate')
 
         connection = urllib2.urlopen(paygrade_table).read().replace(',', '.')
         lines = connection.split('\n')
+
+        if grade < 19:
+            print "Your paygrade is lower than what UiO generally allows... Somethings is wrong here"
+            self.config['rate'] = 0
 
         if grade > 101:
             print "Dude, you are making waaay too much money (paygrade stops at 101)"
@@ -44,6 +46,8 @@ class Penger:
 
         line = lines[grade - 19]
         self.config['rate'] = float(line.split(';')[2])
+
+        return self.config['rate']
 
     def parse_commands(self):
         parser = argparse.ArgumentParser(description='Timeliste generator -- Nikolas Papaioannou <nikolasp@ifi.uio.no>'
@@ -57,7 +61,6 @@ class Penger:
         parser.add_argument('-o', metavar='--output', type=str, default=None, help="name of the PDF file")
         self.args = parser.parse_args()
 
-        print self.args
 
     def parse_config(self):
         config = open('.timerc', 'r')
@@ -103,7 +106,6 @@ class Penger:
         exit(1)
 
     def get_hours(self, hour_str):
-        print hour_str
         p = re.compile(ur':(.*)$', re.MULTILINE)
 
         hour_sum = 0
@@ -129,27 +131,22 @@ class Penger:
         # noinspection PyShadowingNames
         def date_range():
             if self.args.y and self.args.m:
-                print "m/y found"
                 date_start = datetime(self.args.y, self.args.m, 1)
                 date_end = datetime(self.args.y, self.args.m + 1, 1)
                 date_end = date_end - timedelta(seconds=1)
             elif self.args.m:
-                print "month found"
                 date_start = datetime(date_today.year, self.args.m, 1)
                 date_end = datetime(date_start.year, self.args.m + 1, 1)
                 date_end = date_end - timedelta(seconds=1)
             elif self.args.y:
-                print "year found"
                 date_start = datetime(self.args.y, 1, 1)
                 date_end = datetime(self.args.y + 1, 1, 1)
                 date_end = date_end - timedelta(seconds=1)
             else:
-                print "nothing found"
                 date_start = datetime(date_today.year, date_today.month, 1)
                 date_end = datetime(date_today.year, date_today.month + 1, 1)
                 date_end = date_end - timedelta(seconds=1)
 
-            print "Start: {}\nEnd: {}".format(date_start, date_end)
             return date_start, date_end
 
         sheet_data = ''
@@ -167,11 +164,17 @@ class Penger:
         date_start, date_end = date_range()
 
         for entry in sheet_data:
-            # print entry
             entry_date = entry[0].split(':')[0]
             parsed_date = self.parse_date(entry_date)
             if date_start <= parsed_date <= date_end:
                 self.filtered_entires.append(entry)
+
+    def extra_actions(self): #This is the part that manages printing and mailing users
+        if self.args.e:
+            raise NotImplementedError("email not implemented")
+        if self.args.p:
+            raise NotImplementedError("Printing not implemented")
+
 
     # noinspection PyPep8Naming
     def generate_PDF(self):
@@ -219,7 +222,6 @@ class Penger:
             week_num = str(datetime_obj.isocalendar()[1])
 
             time_sum, time_from, time_to = self.get_hours(entry[0])
-            # print time_sum,time_from,time_to
 
             if time_from is None and time_to is None:
                 time_to = 'Hours'
@@ -237,7 +239,6 @@ class Penger:
 
             scalar = math.ceil(len(note) / 30.0)
             if scalar > 1:
-                print scalar
                 cell_height *= scalar
 
             pdf.cell(25, cell_height, txt=datetime_str, ln=0, border=1, align='C')  # Date cell
@@ -263,7 +264,21 @@ class Penger:
         pdf.cell(note_size, cell_height, border=1, txt="Total hours: {}".format(self.sum_hour))  # Notes
         pdf.cell(sign_size, cell_height, border=0, ln=1)
 
-        pdf.output('test.pdf')
+        file_name = datetime.now().strftime("%Y-%m-%d.pdf")
+
+        if self.args.o:
+            file_name = self.args.o
+
+
+        pdf.output(file_name)
+
+    def summation(self):
+        hourly_rate = self.get_hourly_rate()
+        tax_rate = self.config['tax percentage']
+        tax = hourly_rate * self.sum_hour * tax_rate /100
+        income = hourly_rate * self.sum_hour - tax
+        print summarazation.format(self.config['paygrade'], hourly_rate, self.sum_hour, hourly_rate * self.sum_hour,
+                                   tax_rate, tax, income)
 
     def __init__(self):
         self.config = {}
@@ -277,6 +292,10 @@ class Penger:
         self.parse_config()
         self.parse_timesheet()
         self.generate_PDF()
+
+        self.extra_actions()
+
+        self.summation()
 
 
 date_str_formats = ['%Y-%m-%d', '%y%m', '%y%m%d']
@@ -299,6 +318,19 @@ Formatting for the .timerc file:
     posistion:      Timevakt    # name of your posistion
     place:          IFI         # place of work
 '''
+
+summarazation = '''
+Paygrade                   {0}
+
+Hourly rate:               {1}
+Hours worked               {2}
+---------------------------------
+Pre-tax                    {3}
+Taxation ({4})             {5}
+=================================
+Post-tax                   {6}
+'''
+
 
 if __name__ == '__main__':
     penger = Penger()
