@@ -1,8 +1,8 @@
 name:           Nikolas Papaioannou
 tax percentage: 5           # how much you are taxed
-paygrade:       40            # what paygrade you got
+pay grade:       40            # what pay grade you got
 timesheet:      timer.txt # placement of your timesheet
 pnr:            29049449192 # leave blank if you do not wish this to be added
-position:      Timevakt     # name of your posistion
+position:      Timevakt     # name of your position
 place:          ifi         # place of work
 

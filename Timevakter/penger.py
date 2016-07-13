@@ -1,17 +1,25 @@
 import argparse
-import re
-import urllib2
-import sys
-from fpdf import FPDF
-from datetime import datetime, timedelta
 import math
 import os
-from subprocess import Popen,PIPE,STDOUT
+import re
 import shlex
-import time
+import sys
+import urllib2
+from datetime import datetime, timedelta
+from subprocess import Popen, PIPE
 
-paygrade_table = 'http://nikolasp.at.ifi.uio.no/C-tabell.csv'
 sys.tracebacklimit = 3
+
+try:
+    from fpdf import FPDF
+except ImportError as err:
+    FPDF = None
+    print 'Unable to import fpdf, please download the package\nNOTE: On uio? You can use \'pip install --user fpdf\'\n'\
+          'to install without locally without the need of Sudo'
+    raise err
+
+pay_grade_table = 'http://nikolasp.at.ifi.uio.no/C-tabell.csv'
+
 
 class DateError(Exception):
     def __init__(self, message):
@@ -34,17 +42,17 @@ class PDF(FPDF):
 
 class Penger:
     def get_hourly_rate(self):
-        grade = self.config['paygrade']
+        grade = self.config['pay grade']
 
-        connection = urllib2.urlopen(paygrade_table).read().replace(',', '.')
+        connection = urllib2.urlopen(pay_grade_table).read().replace(',', '.')
         lines = connection.split('\n')
 
         if grade < 19:
-            print "Your paygrade is lower than what UiO generally allows... Somethings is wrong here"
+            print "Your pay grade is lower than what UiO generally allows... Somethings is wrong here"
             self.config['rate'] = 0
 
         if grade > 101:
-            print "Dude, you are making waaay too much money (paygrade stops at 101)"
+            print "Dude, you are making waaay too much money (pay grade stops at 101)"
             self.config['rate'] = 0
 
         line = lines[grade - 19]
@@ -77,13 +85,16 @@ class Penger:
             print "Error with .timerc file, wrong number of arguments found in the file\n" \
                   "Should be {0} arguments, found {1}". \
                 format(arg_number, len(config_res))
+
+            print timerc_example
+
             exit(1)
 
         for pair in config_res:
             self.config[pair[0]] = pair[1]
 
         self.config['tax percentage'] = float(self.config['tax percentage'])
-        self.config['paygrade'] = int(self.config['paygrade'])
+        self.config['pay grade'] = int(self.config['pay grade'])
 
     @staticmethod
     def parse_date(date_str):
@@ -173,26 +184,25 @@ class Penger:
         if self.args.e:
             if 'nt' in os.name:
                 addr_to = self.args.e
-                subject = 'Timescript'
+                subject = '[Timescript]'
                 smtp = 'smtp.uio.no'
-                atta = os.path.abspath(self.config['outputname'])
-                print atta
+                atta = os.path.abspath(self.config['output name'])
 
-                #Run the powershell mail command here
-                args = shlex.split(r'powershell.exe Send-MailMessage -To {0} -From {0} -Subject {1} -SmtpServer {2} -Attachments "{3}"'
-                                   .format(addr_to,subject,smtp,atta))
-                print args
+                # Run the powershell mail command here
+                print "Note, mail command might take some time"
+                args = shlex.split(
+                    r'powershell.exe -NoProfile Send-MailMessage '
+                    r'-To {0} -From {0} -Subject {1} -SmtpServer {2} -Attachments "{3}"'
+                    .format(addr_to, subject, smtp, atta))
 
-                shell = Popen(args=args, shell = True, stdin = PIPE, stdout = PIPE,bufsize=0)
-
-                print shell.communicate()[0]
+                Popen(args=args, shell=True, stdin=PIPE, stdout=PIPE)
 
             elif 'posix' in os.name:
                 return 0
-                #Run the bash mutt command here
+                # Run the bash mutt command here
 
             else:
-                print "No clue what the give OS is"
+                print "No clue what the given OS is"
 
         if self.args.p:
             raise NotImplementedError("Printing not implemented")
@@ -203,8 +213,8 @@ class Penger:
         pdf.add_page()
 
         pdf.set_font('Arial')
-        pdf.multi_cell(w=100, h=8, txt="Name: {0}\nStilling: {1}\nPaygrade: {2}\nPlace of work: {3}\nSSN: {4}"
-                       .format(self.config['name'], self.config['position'], self.config['paygrade'],
+        pdf.multi_cell(w=100, h=8, txt="Name: {0}\nStilling: {1}\nPay grade: {2}\nPlace of work: {3}\nSSN: {4}"
+                       .format(self.config['name'], self.config['position'], self.config['pay grade'],
                                self.config['place'],
                                self.config['pnr']), align='L', )
 
@@ -263,7 +273,7 @@ class Penger:
                 cell_height *= scalar
 
             pdf.cell(25, cell_height, txt=datetime_str, ln=0, border=1, align='C')  # Date cell
-            pdf.cell(20, cell_height, txt=week_num, ln=0, border=1, align='C')  # Wekk number cell
+            pdf.cell(20, cell_height, txt=week_num, ln=0, border=1, align='C')  # Week number cell
             pdf.cell(time_size, cell_height, border=1, txt=time_from)  # From time
             pdf.cell(time_size, cell_height, border=1, txt=time_to)  # To time
 
@@ -279,7 +289,7 @@ class Penger:
         # After writing all the entries, we have an other entry as a note with the number of hours total
 
         pdf.cell(25, cell_height, ln=0, border=0, align='C')  # Date cell
-        pdf.cell(20, cell_height, ln=0, border=0, align='C')  # Wekk number cell
+        pdf.cell(20, cell_height, ln=0, border=0, align='C')  # Week number cell
         pdf.cell(time_size, cell_height, border=0, align='C')  # From time
         pdf.cell(time_size, cell_height, border=0, align='C')  # To time
         pdf.cell(note_size, cell_height, border=1, txt="Total hours: {}".format(self.sum_hour))  # Notes
@@ -292,15 +302,15 @@ class Penger:
 
         pdf.output(file_name)
 
-        self.config['outputname'] = file_name
+        self.config['output name'] = file_name
 
     def summation(self):
         hourly_rate = self.get_hourly_rate()
         tax_rate = self.config['tax percentage']
         tax = hourly_rate * self.sum_hour * tax_rate / 100
         income = hourly_rate * self.sum_hour - tax
-        print summarazation.format(self.config['paygrade'], hourly_rate, self.sum_hour, hourly_rate * self.sum_hour,
-                                   tax_rate, tax, income)
+        print summation.format(self.config['pay grade'], hourly_rate, self.sum_hour, hourly_rate * self.sum_hour,
+                               tax_rate, tax, income)
 
     def __init__(self):
         self.config = {}
@@ -334,15 +344,15 @@ Example of timesheet content:
 Formatting for the .timerc file:
     name:           Nikolas Papaioannou
     tax percentage: 5           # how much you are taxed
-    paygrade:       40          # what paygrade you got
+    pay grade:       40         # what pay grade you got
     timesheet:      ~/timer.txt # placement of your timesheet
     pnr:            12345123450 # leave blank if you do not wish this to be added
-    posistion:      Timevakt    # name of your posistion
+    position:      Timevakt    # name of your position
     place:          IFI         # place of work
 '''
 
-summarazation = '''
-Paygrade                   {0}
+summation = '''
+Pay grade                   {0}
 
 Hourly rate:               {1}
 Hours worked               {2}
@@ -352,6 +362,16 @@ Taxation ({4})             {5}
 =================================
 Post-tax                   {6}
 '''
+
+timerc_example = '''
+The following things should be in the .timerc file:
+    name:           Namey McName
+    tax percentage: 0                    # how much you are taxed
+    pay grade:       0                   # what pay grade you got
+    timesheet:      ~/timer.txt          # placement of your timesheet
+    pnr:            12345123450          # leave blank if you do not wish this to be added
+    position:      Guardian of Time     # name of your position
+    place:          IFI                  # place of work'''
 
 if __name__ == '__main__':
     penger = Penger()
