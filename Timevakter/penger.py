@@ -62,7 +62,7 @@ class Penger:
 
     def parse_commands(self):
         parser = argparse.ArgumentParser(description='Timeliste generator -- Nikolas Papaioannou <nikolasp@ifi.uio.no>'
-                                         , prefix_chars='-/', version='0.1', epilog=epilog,
+                                         , prefix_chars='-/', version='0.1', epilog=str(timesheet_exaple) + str(timerc_example),
                                          formatter_class=argparse.RawTextHelpFormatter)
         parser.add_argument('-p', metavar='--printer', type=str, default=None, help='What printer to send the job to')
         parser.add_argument('-m', metavar='--month', type=int, default=None, help="What month to generate")
@@ -182,7 +182,7 @@ class Penger:
 
     def extra_actions(self):  # This is the part that manages printing and mailing users
         if self.args.e:
-            if 'nt' in os.name:
+            if 'nt' in os.name: #Windows systems
                 addr_to = self.args.e
                 subject = '[Timescript]'
                 smtp = 'smtp.uio.no'
@@ -324,32 +324,12 @@ class Penger:
         self.parse_config()
         self.parse_timesheet()
         self.generate_PDF()
-
         self.extra_actions()
-
         self.summation()
 
 
 date_str_formats = ['%Y-%m-%d', '%y%m', '%y%m%d']
 hour_str_formats = ['%H:%M', '%H']
-
-epilog = '''
-Example of timesheet content:
-
-    YYYY-MM-DD: hh:mm-hh:mm # commentary
-    YYMM: tt # Javakurs
-    YYMMDD: hh-hh # Langfredag
-
-
-Formatting for the .timerc file:
-    name:           Nikolas Papaioannou
-    tax percentage: 5           # how much you are taxed
-    pay grade:       40         # what pay grade you got
-    timesheet:      ~/timer.txt # placement of your timesheet
-    pnr:            12345123450 # leave blank if you do not wish this to be added
-    position:      Timevakt    # name of your position
-    place:          IFI         # place of work
-'''
 
 summation = '''
 Pay grade                   {0}
@@ -363,14 +343,22 @@ Taxation ({4})             {5}
 Post-tax                   {6}
 '''
 
+timesheet_exaple = '''
+Example of timesheet content:
+    YYYY-MM-DD: hh:mm-hh:mm # commentary
+    YYMM: tt # Javakurs
+    YYMMDD: hh-hh # Langfredag
+
+'''
+
 timerc_example = '''
 The following things should be in the .timerc file:
     name:           Namey McName
     tax percentage: 0                    # how much you are taxed
-    pay grade:       0                   # what pay grade you got
+    pay grade:      0                    # what pay grade you got
     timesheet:      ~/timer.txt          # placement of your timesheet
     pnr:            12345123450          # leave blank if you do not wish this to be added
-    position:      Guardian of Time     # name of your position
+    position:       Guardian of Time     # name of your position
     place:          IFI                  # place of work'''
 
 if __name__ == '__main__':
