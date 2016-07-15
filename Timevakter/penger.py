@@ -343,7 +343,7 @@ Taxation ({4})             {5}
 Post-tax                   {6}
 '''
 
-timesheet_exaple = '''
+timesheet_exaple = r'''
 Example of timesheet content:
     YYYY-MM-DD: hh:mm-hh:mm # commentary
     YYMM: tt # Javakurs
@@ -351,7 +351,7 @@ Example of timesheet content:
 
 '''
 
-timerc_example = '''
+timerc_example = r'''
 The following things should be in the .timerc file:
     name:           Namey McName
     tax percentage: 0                    # how much you are taxed
