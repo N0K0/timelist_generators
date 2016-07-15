@@ -1,3 +1,4 @@
+#!/usr/bin/python
 import argparse
 import math
 import os
@@ -18,6 +19,7 @@ except ImportError as err:
           'to install without locally without the need of Sudo'
     raise err
 
+# NOTE: This is manually updated by Nikolasp, yell at him if he has forgotten to update the table
 pay_grade_table = 'http://nikolasp.at.ifi.uio.no/C-tabell.csv'
 
 
@@ -32,7 +34,7 @@ class DateError(Exception):
 class PDF(FPDF):
     def header(self):
         # Logo
-        self.image('uio_seal_a_eng.png', h=15, )
+        self.image('uio_seal_a_eng.png', h=15, )  # TODO: Make it so this image is also downloaded from the public site
         self.set_font('Helvetica', 'B', 18)
         self.cell(140, ln=0)
         self.cell(40, h=-12, txt='Timesheet', ln=1)
@@ -205,6 +207,7 @@ class Penger:
                 print "No clue what the given OS is"
 
         if self.args.p:
+            # TODO: Implement printing
             raise NotImplementedError("Printing not implemented")
 
     # noinspection PyPep8Naming
@@ -219,10 +222,10 @@ class Penger:
                                self.config['pnr']), align='L', )
 
         pdf.ln(10)
-        # Done creating info and toptext
+        # Done creating info and top text
 
         # Starting to create cells
-        # Creating the header
+        # Creating the header row
         pdf.set_font('Arial', size=12)
         cell_height = 6
         time_size = 20
@@ -318,8 +321,6 @@ class Penger:
         self.filtered_entires = []
         self.sum_hour = 0
 
-        # NOTE: This is manually updated by Nikolasp, yell at him if he has forgotten to update the table
-
         self.parse_commands()
         self.parse_config()
         self.parse_timesheet()
@@ -331,8 +332,8 @@ class Penger:
 date_str_formats = ['%Y-%m-%d', '%y%m', '%y%m%d']
 hour_str_formats = ['%H:%M', '%H']
 
-summation = '''
-Pay grade                   {0}
+summation = r'''
+Pay grade                  {0}
 
 Hourly rate:               {1}
 Hours worked               {2}
