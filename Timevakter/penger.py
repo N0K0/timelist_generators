@@ -157,7 +157,8 @@ class Penger:
         else:
             time_from, time_to = self.parse_hours(time_str[0]), self.parse_hours(time_str[1])
             time_delta = time_to - time_from
-            hour_sum = time_delta.total_seconds() / 3600
+            #Using this janky shit of an formula since UiO has an outdates timedate module (total_sec is not implmented)
+            hour_sum = (time_delta.microseconds + (time_delta.seconds + time_delta.days * 24 * 3600) * 10**6) / 10**6 / 3600
 
         return hour_sum, time_from, time_to
 
