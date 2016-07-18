@@ -72,7 +72,7 @@ class Penger:
 
     def parse_commands(self):
         parser = argparse.ArgumentParser(description='Timeliste generator -- Nikolas Papaioannou <nikolasp@ifi.uio.no>'
-                                         , prefix_chars='-/', epilog=str(timesheet_exaple) + str(timerc_example),
+                                         , prefix_chars='-/', epilog=str(timesheet_example) + str(timerc_example),
                                          formatter_class=argparse.RawTextHelpFormatter)
         parser.add_argument('-p', metavar='--printer', type=str, default=None, help='What printer to send the job to')
         parser.add_argument('-m', metavar='--month', type=int, default=None, help="What month to generate")
@@ -390,7 +390,7 @@ Taxation ({4})             {5}
 Post-tax                   {6}
 '''
 
-timesheet_exaple = r'''
+timesheet_example = r'''
 Example of timesheet content:
     YYYY-MM-DD: hh:mm-hh:mm # commentary
     YYMM: tt # Javakurs
