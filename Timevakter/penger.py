@@ -249,7 +249,7 @@ class Penger:
                 exit(1)
 
             elif 'posix' in os.name:
-                args = shlex.split(r'pushprint -P {0} {1}'.format(self.args.p,self.config['output name']))
+                args = shlex.split(r'pushprint -P {0} {1}'.format(self.args.p,os.path.abspath(self.config['output name'])))
                 try:
                     Popen(args=args, shell=False, stdin=PIPE, stdout=PIPE)
                 except OSError:
