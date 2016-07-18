@@ -78,7 +78,7 @@ class Penger:
         config = open('.timerc', 'r')
         config_str = config.read()
 
-        re_config = re.compile(ur'(.*?):\s*([\\~./0-9a-zA-Z ]*)(#|$)', re.MULTILINE)
+        re_config = re.compile(ur'(.*?):\s+([\\~.\/0-9a-zA-Z ]*)(#.*$|$)', re.MULTILINE)
 
         config_res = re.findall(re_config, config_str)
 
@@ -222,6 +222,13 @@ class Penger:
                 print "No clue what the given OS is"
 
         if self.args.p:
+            if 'nt' in os.name:
+                exit(1)
+
+            elif 'posix' in os.name:
+                args = shlex.split(r'pushprint -P {0}'.format(self.args.p))
+                Popen(args=args, shell=False, stdin=PIPE, stdout=PIPE)
+
             # TODO: Implement printing
             raise NotImplementedError("Printing not implemented")
 

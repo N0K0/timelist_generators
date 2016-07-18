@@ -3,6 +3,5 @@ tax percentage: 5           # how much you are taxed
 pay grade:       40            # what pay grade you got
 timesheet:      ~/timer.txt # placement of your timesheet
 pnr:            29049449192 # leave blank if you do not wish this to be added
-position:      Timevakt     # name of your position
+position:      Time vakt     # name of your position
 place:          Institutt for informatikk         # place of work
-
