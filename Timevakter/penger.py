@@ -157,7 +157,7 @@ class Penger:
         else:
             time_from, time_to = self.parse_hours(time_str[0]), self.parse_hours(time_str[1])
             time_delta = time_to - time_from
-            #Using this janky shit of an formula since UiO has an outdates timedate module (total_sec is not implmented)
+            # Using this janky shit of an formula since UiO has an outdated timedate (total_sec is not implmented)
             hour_sum = (time_delta.microseconds + (time_delta.seconds + time_delta.days * 24 * 3600) * 10**6) / 10**6 / 3600
 
         return hour_sum, time_from, time_to
@@ -247,7 +247,18 @@ class Penger:
 
         if self.args.p:
             if 'nt' in os.name:
-                raise NotImplementedError
+                # There got to be a cleaner way to do this :C
+                print "Note, might take some time to setup the printer you want"
+                args = shlex.split(r'powershell.exe (New-Object -ComObject WScript.Network).AddWindowsPrinterConnection("\\pushprint.uio.no\{0}")'.format(self.args.p),posix=False)
+                shell = Popen(args=args, shell=True, stdin=PIPE, stdout=PIPE)
+                print shell.communicate()
+                args = shlex.split(r'powershell.exe (New-Object -ComObject WScript.Network).SetDefaultPrinter("\\pushprint.uio.no\futura")'.format(self.args.p), posix=False)
+                shell = Popen(args=args, shell=True, stdin=PIPE, stdout=PIPE)
+                print shell.communicate()
+                args = shlex.split(r'powershell.exe Start-Process -FilePath {0} -Verb Print'.format(os.path.abspath(self.config['output name'])),posix=False)
+                print args
+                shell = Popen(args=args, shell=True, stdin=PIPE, stdout=PIPE)
+                print shell.communicate()
 
             elif 'posix' in os.name:
                 args = shlex.split(r'pushprint -P {0} {1}'.format(self.args.p,os.path.abspath(self.config['output name'])))
