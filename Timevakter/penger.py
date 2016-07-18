@@ -8,6 +8,8 @@ import sys
 import urllib2
 from datetime import datetime, timedelta
 from subprocess import Popen, PIPE
+import getpass
+import socket
 
 sys.tracebacklimit = 3
 
@@ -34,10 +36,10 @@ class DateError(Exception):
 class PDF(FPDF):
     def header(self):
         # Logo
-        self.image('uio_seal_a_eng.png', h=15, )  # TODO: Make it so this image is also downloaded from the public site
+        #self.image('uio_seal_a_eng.png', h=15, )  # TODO: Make it so this image is also downloaded from the public site
         self.set_font('Helvetica', 'B', 18)
         self.cell(140, ln=0)
-        self.cell(40, h=-12, txt='Timesheet', ln=1)
+        self.cell(40, h=0, txt='Timesheet', ln=1)
         # Line break
         self.ln(20)
 
@@ -64,13 +66,13 @@ class Penger:
 
     def parse_commands(self):
         parser = argparse.ArgumentParser(description='Timeliste generator -- Nikolas Papaioannou <nikolasp@ifi.uio.no>'
-                                         , prefix_chars='-/', version='0.1', epilog=str(timesheet_exaple) + str(timerc_example),
+                                         , prefix_chars='-/', epilog=str(timesheet_exaple) + str(timerc_example),
                                          formatter_class=argparse.RawTextHelpFormatter)
         parser.add_argument('-p', metavar='--printer', type=str, default=None, help='What printer to send the job to')
         parser.add_argument('-m', metavar='--month', type=int, default=None, help="What month to generate")
         parser.add_argument('-y', metavar='--year', type=int, default=None, help="What year to print")
         parser.add_argument('-e', metavar='--email', type=str, default=None,
-                            help='NOT IMPLEMENTED - Address to send PDF')
+                            help='Address to send PDF')
         parser.add_argument('-o', metavar='--output', type=str, default=None, help="name of the PDF file")
         self.args = parser.parse_args()
 
@@ -93,10 +95,12 @@ class Penger:
             exit(1)
 
         for pair in config_res:
-            self.config[pair[0]] = pair[1]
+            self.config[pair[0]] = pair[1].strip()
 
         self.config['tax percentage'] = float(self.config['tax percentage'])
         self.config['pay grade'] = int(self.config['pay grade'])
+
+        print self.config
 
     @staticmethod
     def parse_date(date_str):
@@ -106,7 +110,7 @@ class Penger:
             except ValueError:
                 pass
 
-        print "Error parsing the following date: {}".format(date_str)
+        print "Error parsing the following date: {0}".format(date_str)
         exit(1)
 
     @staticmethod
@@ -117,7 +121,7 @@ class Penger:
             except ValueError:
                 pass
 
-        print "Error parsing the following timerange: {}".format(hour_str)
+        print "Error parsing the following timerange: {0}".format(hour_str)
         exit(1)
 
     def get_hours(self, hour_str):
@@ -164,13 +168,17 @@ class Penger:
 
         sheet_data = ''
         try:
-            sheet = open(self.config.get('timesheet'), 'r')
+            path = os.path.expanduser(self.config['timesheet'])
+            print path
+            sheet = open(path, 'r')
             sheet_data = sheet.read()
         except IOError:
-            print "Unable to open {} , check your .timerc file or the rights on the timesheet" \
+            print "Unable to open {0} , check your .timerc file or the rights on the timesheet" \
                 .format(self.config['timesheet'])
+            raise IOError
+            exit(1)
 
-        re_sheet = re.compile(ur'(^[0-9- :]+)([ a-zA-Z]*)?(#[ \S]*$)?', re.MULTILINE)
+        re_sheet = re.compile(ur'(^[0-9- :]+)([ a-zA-Z]+)?(#[ \S]+$)?', re.MULTILINE)
 
         sheet_data = re.findall(re_sheet, sheet_data)
 
@@ -184,24 +192,36 @@ class Penger:
 
     def extra_actions(self):  # This is the part that manages printing and mailing users
         if self.args.e:
-            if 'nt' in os.name: #Windows systems
-                addr_to = self.args.e
-                subject = '[Timescript]'
-                smtp = 'smtp.uio.no'
-                atta = os.path.abspath(self.config['output name'])
 
-                # Run the powershell mail command here
-                print "Note, mail command might take some time"
+            if not "uio.no" in socket.getfqdn():
+                print "Note: found something other than the uio.no domain, mail might not work"
+
+            addr_to = self.args.e
+            subject = '[Timescript] on behalf of ' + getpass.getuser()
+            smtp = 'smtp.uio.no'
+            atta = os.path.abspath(self.config['output name'])
+
+            # Run the powershell mail command here
+            print "Note, mail command might take some time"
+
+            if 'nt' in os.name: #Windows systems
                 args = shlex.split(
                     r'powershell.exe -NoProfile Send-MailMessage '
                     r'-To {0} -From {0} -Subject {1} -SmtpServer {2} -Attachments "{3}"'
                     .format(addr_to, subject, smtp, atta))
 
-                Popen(args=args, shell=True, stdin=PIPE, stdout=PIPE)
+                try:
+                    Popen(args=args, shell=True, stdin=PIPE, stdout=PIPE)
+                except OSError:
+                    print "Unable to find powershell... what on earth are you running?\nUse a UiO machine"
 
-            elif 'posix' in os.name:
-                return 0
-                # Run the bash mutt command here
+
+            elif 'posix' in os.name: #Nix systems
+                args = shlex.split(r'mailx -a {0} -s "{1}" {2}'.format(atta,subject,addr_to))
+                try:
+                    Popen(args=args, shell=False, stdin=PIPE, stdout=PIPE)
+                except OSError:
+                    print "Unable to find the mailx command, this should only be used on a UiO machine due to filtering"
 
             else:
                 print "No clue what the given OS is"
@@ -267,7 +287,7 @@ class Penger:
             self.sum_hour += time_sum
 
             note = str(entry[2])
-            note = note[1:]
+            note = note[1:].encode('UTF-8')
 
             note_height = cell_height
 
@@ -295,7 +315,7 @@ class Penger:
         pdf.cell(20, cell_height, ln=0, border=0, align='C')  # Week number cell
         pdf.cell(time_size, cell_height, border=0, align='C')  # From time
         pdf.cell(time_size, cell_height, border=0, align='C')  # To time
-        pdf.cell(note_size, cell_height, border=1, txt="Total hours: {}".format(self.sum_hour))  # Notes
+        pdf.cell(note_size, cell_height, border=1, txt="Total hours: {0}".format(self.sum_hour))  # Notes
         pdf.cell(sign_size, cell_height, border=0, ln=1)
 
         file_name = datetime.now().strftime("%Y-%m-%d.pdf")
