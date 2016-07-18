@@ -17,13 +17,14 @@ try:
     from fpdf import FPDF
 except ImportError as err:
     FPDF = None
-    print 'Unable to import fpdf, please download the package\nNOTE: On uio? You can use \'pip install --user fpdf\'\n'\
+    print 'Unable to import fpdf, please download the package'
+    print 'NOTE: On uio? You can use \'pip install --user fpdf\'\n'\
           'to install without locally without the need of Sudo'
     raise err
 
 # NOTE: This is manually updated by Nikolasp, yell at him if he has forgotten to update the table
 pay_grade_table = 'http://nikolasp.at.ifi.uio.no/C-tabell.csv'
-
+timerc_example_url = 'http://nikolasp.at.ifi.uio.no/timerc'
 
 class DateError(Exception):
     def __init__(self, message):
@@ -75,28 +76,44 @@ class Penger:
         self.args = parser.parse_args()
 
     def parse_config(self):
-        config = open('.timerc', 'r')
-        config_str = config.read()
 
-        re_config = re.compile(ur'(.*?):\s+([_\\~.\/0-9a-zA-Z ]*)(#.*$|$)', re.MULTILINE)
+        if not os.path.exists('.timerc'):
 
-        config_res = re.findall(re_config, config_str)
+            print "NOTE: Was unable to find your .timerc file, so made a new one at {0}"\
+                .format(os.path.abspath('.timerc'))
 
-        arg_number = 7
-        if len(config_res) != arg_number:
-            print "Error with .timerc file, wrong number of arguments found in the file\n" \
-                  "Should be {0} arguments, found {1}". \
-                format(arg_number, len(config_res))
+            example = urllib2.urlopen(timerc_example_url).read()
+            config = open('.timerc', 'w')
+            config.write(example)
+            config.close()
 
-            print timerc_example
+        try:
+            config = open('.timerc', 'r')
+            config_str = config.read()
 
-            exit(1)
+            re_config = re.compile(ur'(.*?):\s+([_\\~.\/0-9a-zA-Z ]*)(#.*$|$)', re.MULTILINE)
 
-        for pair in config_res:
-            self.config[pair[0]] = pair[1].strip()
+            config_res = re.findall(re_config, config_str)
 
-        self.config['tax percentage'] = float(self.config['tax percentage'])
-        self.config['pay grade'] = int(self.config['pay grade'])
+            arg_number = 7
+            if len(config_res) != arg_number:
+                print "Error with .timerc file, wrong number of arguments found in the file\n" \
+                      "Should be {0} arguments, found {1}". \
+                    format(arg_number, len(config_res))
+
+                print timerc_example
+
+                exit(1)
+
+            for pair in config_res:
+                self.config[pair[0]] = pair[1].strip()
+
+            self.config['tax percentage'] = float(self.config['tax percentage'])
+            self.config['pay grade'] = int(self.config['pay grade'])
+        except IOError:
+            print "Unable to find a .timerc file, creating an example file for you"
+
+
 
     @staticmethod
     def parse_date(date_str):
