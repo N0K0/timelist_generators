@@ -247,17 +247,15 @@ class Penger:
 
         if self.args.p:
             if 'nt' in os.name:
-                exit(1)
+                raise NotImplementedError
 
             elif 'posix' in os.name:
                 args = shlex.split(r'pushprint -P {0} {1}'.format(self.args.p,os.path.abspath(self.config['output name'])))
                 try:
                     Popen(args=args, shell=False, stdin=PIPE, stdout=PIPE)
                 except OSError:
-                    print "Unable to find the pushprint command, are you one a UiO machine?"
+                    print "Unable to find the pushprint command, are you on a UiO machine?"
 
-            # TODO: Implement printing
-            raise NotImplementedError("Printing not implemented")
 
     # noinspection PyPep8Naming
     def generate_PDF(self):
