@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from subprocess import Popen, PIPE
 import getpass
 import socket
+import tempfile
 
 sys.tracebacklimit = 3
 
@@ -25,6 +26,7 @@ except ImportError as err:
 # NOTE: This is manually updated by Nikolasp, yell at him if he has forgotten to update the table
 pay_grade_table = 'http://nikolasp.at.ifi.uio.no/C-tabell.csv'
 timerc_example_url = 'http://nikolasp.at.ifi.uio.no/timerc'
+uio_logo_url = 'http://nikolasp.at.ifi.uio.no/uio_logo.png'
 
 class DateError(Exception):
     def __init__(self, message):
@@ -37,10 +39,15 @@ class DateError(Exception):
 class PDF(FPDF):
     def header(self):
         # Logo
-        #self.image('uio_seal_a_eng.png', h=15, )  # TODO: Make it so this image is also downloaded from the public site
+        logo = urllib2.urlopen(uio_logo_url).read()
+        temp = tempfile.NamedTemporaryFile(suffix=".png",delete=False)
+        temp.write(logo)
+        temp.close()
+        self.image(temp.name, h=15)  # TODO: Make it so this image is also downloaded from the public site
         self.set_font('Helvetica', 'B', 18)
         self.cell(140, ln=0)
-        self.cell(40, h=0, txt='Timesheet', ln=1)
+        self.cell(40, h=-12, txt='Timesheet', ln=1)
+        self.ln(20)
 
 
 class Penger:
