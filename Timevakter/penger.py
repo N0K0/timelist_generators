@@ -12,7 +12,7 @@ import getpass
 import socket
 import tempfile
 
-sys.tracebacklimit = 3
+sys.tracebacklimit = 1
 
 try:
     from fpdf import FPDF
@@ -43,7 +43,7 @@ class PDF(FPDF):
         temp = tempfile.NamedTemporaryFile(suffix=".png",delete=False)
         temp.write(logo)
         temp.close()
-        self.image(temp.name, h=15)  # TODO: Make it so this image is also downloaded from the public site
+        self.image(temp.name, h=15)
         self.set_font('Helvetica', 'B', 18)
         self.cell(140, ln=0)
         self.cell(40, h=-12, txt='Timesheet', ln=1)
@@ -192,9 +192,8 @@ class Penger:
             sheet = open(path, 'r')
             sheet_data = sheet.read()
         except IOError:
-            print "Unable to open {0} , check your .timerc file or the rights on the timesheet" \
+            print "Unable to open {0}, check your .timerc file or the rights on the timesheet" \
                 .format(self.config['timesheet'])
-            raise IOError
             exit(1)
 
         re_sheet = re.compile(ur'(^[0-9- :]+)([ a-zA-Z]+)?(#[ \S]+$)?', re.MULTILINE)
@@ -250,8 +249,11 @@ class Penger:
                 exit(1)
 
             elif 'posix' in os.name:
-                args = shlex.split(r'pushprint -P {0}'.format(self.args.p))
-                Popen(args=args, shell=False, stdin=PIPE, stdout=PIPE)
+                args = shlex.split(r'pushprint -P {0} {1}'.format(self.args.p,self.config['output name']))
+                try:
+                    Popen(args=args, shell=False, stdin=PIPE, stdout=PIPE)
+                except OSError:
+                    print "Unable to find the pushprint command, are you one a UiO machine?"
 
             # TODO: Implement printing
             raise NotImplementedError("Printing not implemented")
@@ -288,7 +290,6 @@ class Penger:
         pdf.cell(time_size, cell_height, txt="To", border=1, align='C')
         pdf.set_xy(x + time_size * 2, y - cell_height)
         pdf.cell(note_size, cell_height * 2, txt="Notes", border=1, ln=0, align='C')
-        # TODO: Remember to stuff total hours into this field too
         pdf.cell(sign_size, cell_height * 2, txt="Sign", border=1, ln=1, align='C')
 
         # Done creating top row
