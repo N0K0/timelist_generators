@@ -40,8 +40,6 @@ class PDF(FPDF):
         self.set_font('Helvetica', 'B', 18)
         self.cell(140, ln=0)
         self.cell(40, h=0, txt='Timesheet', ln=1)
-        # Line break
-        self.ln(20)
 
 
 class Penger:
@@ -99,8 +97,6 @@ class Penger:
 
         self.config['tax percentage'] = float(self.config['tax percentage'])
         self.config['pay grade'] = int(self.config['pay grade'])
-
-        print self.config
 
     @staticmethod
     def parse_date(date_str):
@@ -169,7 +165,6 @@ class Penger:
         sheet_data = ''
         try:
             path = os.path.expanduser(self.config['timesheet'])
-            print path
             sheet = open(path, 'r')
             sheet_data = sheet.read()
         except IOError:
@@ -236,7 +231,7 @@ class Penger:
         pdf.add_page()
 
         pdf.set_font('Arial')
-        pdf.multi_cell(w=100, h=8, txt="Name: {0}\nStilling: {1}\nPay grade: {2}\nPlace of work: {3}\nSSN: {4}"
+        pdf.multi_cell(w=200, h=8, txt="Name: {0}\nStilling: {1}\nPay grade: {2}\nPlace of work: {3}\nSSN: {4}"
                        .format(self.config['name'], self.config['position'], self.config['pay grade'],
                                self.config['place'],
                                self.config['pnr']), align='L', )
@@ -287,7 +282,7 @@ class Penger:
             self.sum_hour += time_sum
 
             note = str(entry[2])
-            note = note[1:].encode('UTF-8')
+            note = note[1:].decode('UTF-8')
 
             note_height = cell_height
 
