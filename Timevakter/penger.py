@@ -78,7 +78,7 @@ class Penger:
         config = open('.timerc', 'r')
         config_str = config.read()
 
-        re_config = re.compile(ur'(.*?):\s+([\\~.\/0-9a-zA-Z ]*)(#.*$|$)', re.MULTILINE)
+        re_config = re.compile(ur'(.*?):\s+([_\\~.\/0-9a-zA-Z ]*)(#.*$|$)', re.MULTILINE)
 
         config_res = re.findall(re_config, config_str)
 
