@@ -19,7 +19,7 @@ try:
 except ImportError as err:
     FPDF = None
     print 'Unable to import fpdf, please download the package'
-    print 'NOTE: On uio? You can use \'pip install --user fpdf\'\n'\
+    print 'NOTE: On uio? You can use \'pip install --user fpdf\' '\
           'to install without locally without the need of Sudo'
     raise err
 
@@ -27,6 +27,7 @@ except ImportError as err:
 pay_grade_table = 'http://nikolasp.at.ifi.uio.no/C-tabell.csv'
 timerc_example_url = 'http://nikolasp.at.ifi.uio.no/timerc'
 uio_logo_url = 'http://nikolasp.at.ifi.uio.no/uio_logo.png'
+
 
 class DateError(Exception):
     def __init__(self, message):
@@ -36,11 +37,12 @@ class DateError(Exception):
         return repr(self.message)
 
 
+# noinspection PyClassHasNoInit
 class PDF(FPDF):
     def header(self):
         # Logo
         logo = urllib2.urlopen(uio_logo_url).read()
-        temp = tempfile.NamedTemporaryFile(suffix=".png",delete=False)
+        temp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
         temp.write(logo)
         temp.close()
         self.image(temp.name, h=15)
@@ -80,13 +82,14 @@ class Penger:
         parser.add_argument('-e', metavar='--email', type=str, default=None,
                             help='Address to send PDF')
         parser.add_argument('-o', metavar='--output', type=str, default=None, help="name of the PDF file")
+        parser.add_argument('-c', metavar='--config', type=str, default=None,
+                            help="Specify a config file. Use this if you for example got multiple jobs")
         self.args = parser.parse_args()
 
     def parse_config(self):
 
         if not os.path.exists('.timerc'):
-
-            print "NOTE: Was unable to find your .timerc file, so made a new one at {0}"\
+            print "NOTE: Was unable to find your .timerc file, so made a new one at {0}" \
                 .format(os.path.abspath('.timerc'))
 
             example = urllib2.urlopen(timerc_example_url).read()
@@ -98,29 +101,22 @@ class Penger:
             config = open('.timerc', 'r')
             config_str = config.read()
 
-            re_config = re.compile(ur'(.*?):\s+([_\\~.\/0-9a-zA-Z ]*)(#.*$|$)', re.MULTILINE)
+            re_config = re.compile(ur'(.*?):\s+([_\\~./0-9a-zA-Z ]*)(#.*$|$)', re.MULTILINE)
 
             config_res = re.findall(re_config, config_str)
 
-            arg_number = 7
-            if len(config_res) != arg_number:
-                print "Error with .timerc file, wrong number of arguments found in the file\n" \
-                      "Should be {0} arguments, found {1}". \
-                    format(arg_number, len(config_res))
-
-                print timerc_example
-
-                exit(1)
-
             for pair in config_res:
                 self.config[pair[0]] = pair[1].strip()
+
+            obligatory_keys = {'name', 'tax percentage', 'pay grade', 'timesheet', 'pnr', 'position', 'place'}
+
+            print obligatory_keys - set(self.config.keys())
+
 
             self.config['tax percentage'] = float(self.config['tax percentage'])
             self.config['pay grade'] = int(self.config['pay grade'])
         except IOError:
             print "Unable to find a .timerc file, creating an example file for you"
-
-
 
     @staticmethod
     def parse_date(date_str):
@@ -158,7 +154,8 @@ class Penger:
             time_from, time_to = self.parse_hours(time_str[0]), self.parse_hours(time_str[1])
             time_delta = time_to - time_from
             # Using this janky shit of an formula since UiO has an outdated timedate (total_sec is not implmented)
-            hour_sum = (time_delta.microseconds + (time_delta.seconds + time_delta.days * 24 * 3600) * 10**6) / 10**6 / 3600
+            hour_sum = (time_delta.microseconds + (
+            time_delta.seconds + time_delta.days * 24 * 3600) * 10 ** 6) / 10 ** 6 / 3600
 
         return hour_sum, time_from, time_to
 
@@ -223,11 +220,11 @@ class Penger:
             # Run the powershell mail command here
             print "Note, mail command might take some time"
 
-            if 'nt' in os.name: #Windows systems
+            if 'nt' in os.name:  # Windows systems
                 args = shlex.split(
                     r'powershell.exe -NoProfile Send-MailMessage '
                     r'-To {0} -From {0} -Subject {1} -SmtpServer {2} -Attachments "{3}"'
-                    .format(addr_to, subject, smtp, atta))
+                        .format(addr_to, subject, smtp, atta))
 
                 try:
                     Popen(args=args, shell=True, stdin=PIPE, stdout=PIPE)
@@ -235,8 +232,8 @@ class Penger:
                     print "Unable to find powershell... what on earth are you running?\nUse a UiO machine"
 
 
-            elif 'posix' in os.name: #Nix systems
-                args = shlex.split(r'mailx -a {0} -s "{1}" {2}'.format(atta,subject,addr_to))
+            elif 'posix' in os.name:  # Nix systems
+                args = shlex.split(r'mailx -a {0} -s "{1}" {2}'.format(atta, subject, addr_to))
                 try:
                     Popen(args=args, shell=False, stdin=PIPE, stdout=PIPE)
                 except OSError:
@@ -249,24 +246,29 @@ class Penger:
             if 'nt' in os.name:
                 # There got to be a cleaner way to do this :C
                 print "Note, might take some time to setup the printer you want"
-                args = shlex.split(r'powershell.exe (New-Object -ComObject WScript.Network).AddWindowsPrinterConnection("\\pushprint.uio.no\{0}")'.format(self.args.p),posix=False)
+                args = shlex.split(
+                    r'powershell.exe (New-Object -ComObject WScript.Network).AddWindowsPrinterConnection("\\pushprint.uio.no\{0}")'.format(
+                        self.args.p), posix=False)
                 shell = Popen(args=args, shell=True, stdin=PIPE, stdout=PIPE)
                 print shell.communicate()
-                args = shlex.split(r'powershell.exe (New-Object -ComObject WScript.Network).SetDefaultPrinter("\\pushprint.uio.no\futura")'.format(self.args.p), posix=False)
+                args = shlex.split(
+                    r'powershell.exe (New-Object -ComObject WScript.Network).SetDefaultPrinter("\\pushprint.uio.no\{0}")'.format(
+                        self.args.p), posix=False)
                 shell = Popen(args=args, shell=True, stdin=PIPE, stdout=PIPE)
                 print shell.communicate()
-                args = shlex.split(r'powershell.exe Start-Process -FilePath {0} -Verb Print'.format(os.path.abspath(self.config['output name'])),posix=False)
+                args = shlex.split(r'powershell.exe Start-Process -FilePath {0} -Verb Print'.format(
+                    os.path.abspath(self.config['output name'])), posix=False)
                 print args
                 shell = Popen(args=args, shell=True, stdin=PIPE, stdout=PIPE)
                 print shell.communicate()
 
             elif 'posix' in os.name:
-                args = shlex.split(r'pushprint -P {0} {1}'.format(self.args.p,os.path.abspath(self.config['output name'])))
+                args = shlex.split(
+                    r'pushprint -P {0} {1}'.format(self.args.p, os.path.abspath(self.config['output name'])))
                 try:
                     Popen(args=args, shell=False, stdin=PIPE, stdout=PIPE)
                 except OSError:
                     print "Unable to find the pushprint command, are you on a UiO machine?"
-
 
     # noinspection PyPep8Naming
     def generate_PDF(self):
@@ -357,6 +359,7 @@ class Penger:
 
         file_name = datetime.now().strftime("%Y-%m-%d.pdf")
 
+
         if self.args.o:
             file_name = self.args.o
 
@@ -402,22 +405,51 @@ Post-tax                   {6}
 '''
 
 timesheet_example = r'''
-Example of timesheet content:
+Formatting of timesheet content for non teaching assistants:
     YYYY-MM-DD: hh:mm-hh:mm # commentary
-    YYMM: tt # Javakurs
+    YYMM: tt
     YYMMDD: hh-hh # Langfredag
 
+Formatting of timesheet content for teaching assistants:
+NOTE: All the formatting from above works. The only field that is really different is the usage of a "activity"
+    part of a entry:
+        YYYY-MM-DD: tt _ACTIVITY GOES HERE_ # Commentary
+
+    Example
+        YYYY-MM-DD: hh:mm-hh:mm meeting # Commentary
+        YYMM: tt Cprep # Commentary
+
+    Meeting:
+        Name: meeting (meet)
+    Preparation for class:
+        Name: Class preparation (Cprep)
+    Preparation for lab:
+        Name: Lab preparation (Lprep)
+    Class:
+        Name: Class (Class)
+    Lab:
+        Name: Lab (Lab)
+    Out of class communication with students:
+        Name: communication (com)
 '''
 
 timerc_example = r'''
-The following things should be in the .timerc file:
+The following things should be in the .timerc for non teaching assistants:
     name:           Namey McName
-    tax percentage: 0                    # how much you are taxed
-    pay grade:      0                    # what pay grade you got
     timesheet:      ~/timer.txt          # placement of your timesheet
     pnr:            12345123450          # leave blank if you do not wish this to be added
     position:       Guardian of Time     # name of your position
-    place:          IFI                  # place of work'''
+    place:          IFI                  # place of work
+
+The following things is needed be in the .timerc for teaching assistants:
+    name:           Namey McName
+    Subject code:   INF2100              # Subject code
+    timesheet:      ~/timer.txt          # placement of your timesheet
+
+Optional arguments for both:
+    tax percentage: 0                    # how much you are taxed
+    pay grade:      0                    # what pay grade you got
+'''
 
 if __name__ == '__main__':
     penger = Penger()
