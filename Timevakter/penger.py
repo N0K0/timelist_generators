@@ -341,7 +341,9 @@ class Penger:
 
             x, y = pdf.get_x(), pdf.get_y()
 
+            pdf.set_font('Courier',size=12, style='b')
             pdf.multi_cell(note_size, note_height, border=1, txt=note)  # Notes
+            pdf.set_font('Arial', size=12, style='b')
             pdf.set_xy(x + note_size, y)
             pdf.cell(sign_size, cell_height, border=1, ln=1)  # Sign
 
@@ -407,8 +409,8 @@ Post-tax                   {6}
 timesheet_example = r'''
 Formatting of timesheet content for non teaching assistants:
     YYYY-MM-DD: hh:mm-hh:mm # commentary
-    YYMM: tt
-    YYMMDD: hh-hh # Langfredag
+    YYMM: tt # Comment
+    YYMMDD: hh-hh
 
 Formatting of timesheet content for teaching assistants:
 NOTE: All the formatting from above works. The only field that is really different is the usage of a "activity"
