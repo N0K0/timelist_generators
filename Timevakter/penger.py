@@ -330,7 +330,7 @@ class Penger:
 
             note_height = cell_height
 
-            scalar = math.ceil(len(note) / 30.0)
+            scalar = math.ceil(len(note) / 28.0)
             if scalar > 1:
                 cell_height *= scalar
 
@@ -342,7 +342,7 @@ class Penger:
             x, y = pdf.get_x(), pdf.get_y()
 
             pdf.set_font('Courier',size=12, style='b')
-            pdf.multi_cell(note_size, note_height, border=1, txt=note)  # Notes
+            pdf.multi_cell(note_size, note_height, border=1, txt=note, align='c')  # Notes
             pdf.set_font('Arial', size=12, style='b')
             pdf.set_xy(x + note_size, y)
             pdf.cell(sign_size, cell_height, border=1, ln=1)  # Sign
