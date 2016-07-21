@@ -120,24 +120,26 @@ class Penger:
 
     @staticmethod
     def parse_date(date_str):
+        date_str = date_str.strip()
         for date_format in date_str_formats:
             try:
                 return datetime.strptime(date_str, date_format) + timedelta(seconds=1)
             except ValueError:
                 pass
 
-        print "Error parsing the following date: {0}".format(date_str)
+        print r"Error parsing the following date: {0}".format(date_str)
         exit(1)
 
     @staticmethod
     def parse_hours(hour_str):
+        hour_str = hour_str.strip()
         for hour_format in hour_str_formats:
             try:
                 return datetime.strptime(hour_str, hour_format)
             except ValueError:
                 pass
 
-        print "Error parsing the following timerange: {0}".format(hour_str)
+        print "Error parsing the following timerange: '{0}'".format(hour_str)
         exit(1)
 
     def get_hours(self, hour_str):
@@ -194,7 +196,7 @@ class Penger:
                 .format(self.config['timesheet'])
             exit(1)
 
-        re_sheet = re.compile(ur'(^[0-9- :]+)([ a-zA-Z]+)?(#[ \S]+$)?', re.MULTILINE)
+        re_sheet = re.compile(ur'(^[0-9- :]+)([ a-zA-Z]+)?(#[ \S]*$)?', re.MULTILINE)
 
         sheet_data = re.findall(re_sheet, sheet_data)
 
@@ -326,7 +328,7 @@ class Penger:
             self.sum_hour += time_sum
 
             note = str(entry[2])
-            note = note[1:].decode('UTF-8')
+            note = note[1:].strip().decode('UTF-8')
 
             note_height = cell_height
 
@@ -344,6 +346,7 @@ class Penger:
             pdf.set_font('Courier',size=12, style='b')
             pdf.multi_cell(note_size, note_height, border=1, txt=note, align='c')  # Notes
             pdf.set_font('Arial', size=12, style='b')
+
             pdf.set_xy(x + note_size, y)
             pdf.cell(sign_size, cell_height, border=1, ln=1)  # Sign
 
@@ -392,7 +395,7 @@ class Penger:
 
 
 date_str_formats = ['%Y-%m-%d', '%y%m', '%y%m%d']
-hour_str_formats = ['%H:%M', '%H']
+hour_str_formats = [r'%H:%M', r'%H']
 
 summation = r'''
 Pay grade                  {0}
