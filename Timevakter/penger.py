@@ -108,9 +108,27 @@ class Penger:
             for pair in config_res:
                 self.config[pair[0]] = pair[1].strip()
 
-            obligatory_keys = {'name', 'tax percentage', 'pay grade', 'timesheet', 'pnr', 'position', 'place'}
+            non_ta_set = {'name','timesheet','pnr','position','place'}
+            ta_set = {'name','subject code','timesheet'}
 
-            print obligatory_keys - set(self.config.keys())
+            non_ta_set = set(non_ta_set) - set(self.config.keys())
+            ta_set = set(ta_set) - set(self.config.keys())
+
+            if len(non_ta_set) == 0 and len(ta_set) == 0:
+                print "[!] Unable to discern if this is a file for a TA or a non-TA config"
+                print "[!] Note: TA does not need to list position"
+                exit(1)
+
+            if len(non_ta_set) == 0:
+                self.config['mode'] = 'non-ta'
+            elif len(ta_set) == 0:
+                self.config['mode'] = 'ta'
+            else:
+                print "Error with the keys in the config file."
+                print "Has found: {0}\nMissing the following key(s) for non-TA: {1}\nMissing the following key(s) for TA: {2}\n"\
+                    .format(', '.join(self.config.keys()),', '.join(non_ta_set),', '.join(ta_set))
+                print timerc_example
+                exit(1)
 
 
             self.config['tax percentage'] = float(self.config['tax percentage'])
@@ -439,7 +457,7 @@ NOTE: All the formatting from above works. The only field that is really differe
 '''
 
 timerc_example = r'''
-The following things should be in the .timerc for non teaching assistants:
+The following things is needed be in the .timerc for non teaching assistants:
     name:           Namey McName
     timesheet:      ~/timer.txt          # placement of your timesheet
     pnr:            12345123450          # leave blank if you do not wish this to be added
@@ -448,7 +466,7 @@ The following things should be in the .timerc for non teaching assistants:
 
 The following things is needed be in the .timerc for teaching assistants:
     name:           Namey McName
-    Subject code:   INF2100              # Subject code
+    subject code:   INF2100              # Subject code
     timesheet:      ~/timer.txt          # placement of your timesheet
 
 Optional arguments for both:
