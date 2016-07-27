@@ -1,7 +1,9 @@
 name:           Nikolas Papaioannou
 tax percentage: 5           # how much you are taxed
 pay grade:     40            # what pay grade you got
-#timesheet:     timer.txt # placement of your timesheet
+timesheet:     timer.txt # placement of your timesheet
 pnr:           0011001100 # leave blank if you do not wish this to be added
-position:      Guardian of time     # name of your position
+#position:      Guardian of time     # name of your position
 place:         ifi         # place of work
+subject code:  INF3190
+birth date:    2016-04-29

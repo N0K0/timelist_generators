@@ -62,10 +62,13 @@ class Penger:
         if grade < 19:
             print "Your pay grade is lower than what UiO generally allows... Somethings is wrong here"
             self.config['rate'] = 0
+            return self.config['rate']
 
         if grade > 101:
             print "Dude, you are making waaay too much money (pay grade stops at 101)"
             self.config['rate'] = 0
+            return self.config['rate']
+
 
         line = lines[grade - 19]
         self.config['rate'] = float(line.split(';')[2])
@@ -101,15 +104,15 @@ class Penger:
             config = open('.timerc', 'r')
             config_str = config.read()
 
-            re_config = re.compile(ur'(.*?):\s+([_\\~./0-9a-zA-Z ]*)(#.*$|$)', re.MULTILINE)
+            re_config = re.compile(ur'(.*?):\s+([_\\~./0-9a-zA-Z -]*)(#.*$|$)', re.MULTILINE)
 
             config_res = re.findall(re_config, config_str)
 
             for pair in config_res:
                 self.config[pair[0]] = pair[1].strip()
 
-            non_ta_set = {'name','timesheet','pnr','position','place'}
-            ta_set = {'name','subject code','timesheet'}
+            non_ta_set = {'name','timesheet','pnr','position','place','pay grade'}
+            ta_set = {'name','subject code','timesheet','birth date'}
 
             non_ta_set = set(non_ta_set) - set(self.config.keys())
             ta_set = set(ta_set) - set(self.config.keys())
@@ -123,6 +126,7 @@ class Penger:
                 self.config['mode'] = 'non-ta'
             elif len(ta_set) == 0:
                 self.config['mode'] = 'ta'
+                self.config['position'] = 'Teaching assistant'
             else:
                 print "Error with the keys in the config file."
                 print "Has found: {0}\nMissing the following key(s) for non-TA: {1}\nMissing the following key(s) for TA: {2}\n"\
@@ -130,9 +134,8 @@ class Penger:
                 print timerc_example
                 exit(1)
 
-
-            self.config['tax percentage'] = float(self.config['tax percentage'])
-            self.config['pay grade'] = int(self.config['pay grade'])
+            self.config['tax percentage'] = float(self.config.setdefault('tax percentage',0))
+            self.config['pay grade'] = int(self.config.setdefault('pay grade',0))
         except IOError:
             print "Unable to find a .timerc file, creating an example file for you"
 
@@ -174,8 +177,8 @@ class Penger:
             time_from, time_to = self.parse_hours(time_str[0]), self.parse_hours(time_str[1])
             time_delta = time_to - time_from
             # Using this janky shit of an formula since UiO has an outdated timedate (total_sec is not implmented)
-            hour_sum = (time_delta.microseconds + (
-            time_delta.seconds + time_delta.days * 24 * 3600) * 10 ** 6) / 10 ** 6 / 3600
+            hour_sum = (time_delta.microseconds +
+                (time_delta.seconds + time_delta.days * 24 * 3600) * 10 ** 6) / 10 ** 6 / 3600
 
         return hour_sum, time_from, time_to
 
@@ -202,6 +205,7 @@ class Penger:
                 date_end = datetime(date_today.year, date_today.month + 1, 1)
                 date_end = date_end - timedelta(seconds=1)
 
+            self.config['month name'] = date_start.strftime('%B')
             return date_start, date_end
 
         sheet_data = ''
@@ -299,7 +303,7 @@ class Penger:
         pdf.multi_cell(w=200, h=8, txt="Name: {0}\nStilling: {1}\nPay grade: {2}\nPlace of work: {3}\nSSN: {4}"
                        .format(self.config['name'], self.config['position'], self.config['pay grade'],
                                self.config['place'],
-                               self.config['pnr']), align='L', )
+                               self.config['pnr']), align='L')
 
         pdf.ln(10)
         # Done creating info and top text
@@ -382,6 +386,8 @@ class Penger:
 
         file_name = datetime.now().strftime("%Y-%m-%d.pdf")
 
+        if self.config.get('mode') is 'ta':
+            pdf  = self.TA_page(pdf)
 
         if self.args.o:
             file_name = self.args.o
@@ -389,6 +395,52 @@ class Penger:
         pdf.output(file_name)
 
         self.config['output name'] = file_name
+
+    def TA_page(self, pdf):
+        pdf.set_font('Arial', size=12)
+
+        first_name, last_name = self.config['name'].rsplit(' ',1)
+        birth_date = self.config['birth date']
+
+        pdf.add_page()
+        page_width = pdf.w - pdf.l_margin - pdf.r_margin #Size of actual page area
+        #Information about the TA
+        info_width = page_width/3
+        info_heigth = 20
+
+        # 1st line
+        pdf.set_font('Arial', size=8)
+        x, y = pdf.get_x(), pdf.get_y()
+        pdf.cell(info_width,5,txt='First Name')
+        pdf.cell(info_width,5,txt='Subject Code')
+        pdf.cell(info_width,5,txt='Date of Birth')
+        pdf.set_xy(x,y)
+
+        pdf.set_font('Arial', size=14,style='B')
+        pdf.cell(info_width,info_heigth,align='C',border=1,txt=first_name)
+        pdf.cell(info_width,info_heigth,align='C',border=1,txt=self.config['subject code'])
+        pdf.cell(info_width,info_heigth,align='C',border=1,txt=birth_date,ln=1)
+
+        # 2nd line
+        pdf.set_font('Arial', size=8)
+        x, y = pdf.get_x(), pdf.get_y()
+        pdf.cell(info_width,5,txt='Last Name')
+        pdf.cell(info_width,5,txt='Month')
+        pdf.cell(info_width,5,txt='Total number of hours')
+        pdf.set_xy(x,y)
+
+        pdf.set_font('Arial', size=14,style='B')
+        pdf.cell(info_width,info_heigth,align='C',border=1,txt=last_name)
+        pdf.cell(info_width,info_heigth,align='C',border=1,txt=self.config['month name'])
+        pdf.cell(info_width,info_heigth,align='C',border=1,txt=str(self.sum_hour))
+
+        # Done with 2nd Line
+
+        #Specification of the hours
+
+
+        return pdf
+
 
     def summation(self):
         hourly_rate = self.get_hourly_rate()
