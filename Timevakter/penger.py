@@ -139,6 +139,26 @@ class Penger:
         except IOError:
             print "Unable to find a .timerc file, creating an example file for you"
 
+    def parse_activity(self,activity_str,time_sum):
+        activity_str = activity_str.strip().lower()
+        if activity_str == '':
+            return
+
+        if activity_str in 'meet' or activity_str in 'meeting':
+            self.hours['meeting'] = self.hours.setdefault('meeting',0) + time_sum
+        elif activity_str in 'class perparation' or activity_str in 'cprep':
+            self.hours['cperp'] = self.hours.setdefault('cprep', 0) + time_sum
+        elif activity_str in 'lab preparation' or activity_str in 'lprep':
+            self.hours['lprep'] = self.hours.setdefault('lprep',0) + time_sum
+        elif activity_str in 'class':
+            self.hours['class'] = self.hours.setdefault('class',0) + time_sum
+        elif activity_str in 'lab':
+            self.hours['lab'] = self.hours.setdefault('lab',0) + time_sum
+        elif activity_str in 'communication' or activity_str in 'com':
+            self.hours['com'] = self.hours.setdefault('com', 0) + time_sum
+        else:
+            self.hours['other'] = self.hours.setdefault('other', 0) + time_sum
+
     @staticmethod
     def parse_date(date_str):
         date_str = date_str.strip()
@@ -332,6 +352,8 @@ class Penger:
         pdf.set_font('Arial', size=12, style='b')
 
         for entry in self.filtered_entires:
+
+
             entry_date = entry[0].split(':')
             datetime_obj = self.parse_date(entry_date[0])
             datetime_str = datetime_obj.strftime('%Y-%m-%d')
@@ -347,6 +369,9 @@ class Penger:
                 time_from = time_from.strftime('%H:%M')
                 time_to = time_to.strftime('%H:%M')
 
+
+            if self.config.get('mode'):
+                self.parse_activity(entry[1],time_sum)
             self.sum_hour += time_sum
 
             note = str(entry[2])
@@ -432,15 +457,30 @@ class Penger:
         pdf.set_font('Arial', size=14,style='B')
         pdf.cell(info_width,info_heigth,align='C',border=1,txt=last_name)
         pdf.cell(info_width,info_heigth,align='C',border=1,txt=self.config['month name'])
-        pdf.cell(info_width,info_heigth,align='C',border=1,txt=str(self.sum_hour))
+        pdf.cell(info_width,info_heigth,align='C',border=1,txt=str(self.sum_hour),ln=1)
+        pdf.ln(10)
 
         # Done with 2nd Line
 
         #Specification of the hours
 
+        pdf.cell(pdf.w/2,info_heigth/2,txt='Specification of hours',ln=1)
+        pdf.set_font('Arial', size=14)
+        pdf.cell(pdf.w,info_heigth/2,txt='(Doubleclass of lecturing = 2 hours, or rounded to nearest quarter hour)',ln=1)
+        pdf.set_font('Arial', size=14,style='B')
+
+        hour_h = 15
+        hour_w = page_width / 2
+
+        print self.hours
+
+        pdf.cell(hour_w,hour_h/3,txt="Activity",border=1)
+        pdf.cell(hour_w,hour_h/3,txt="Number of hours",border=1,ln=1)
+
+        pdf.cell(hour_w,hour_h,border=1,txt='Meeting')
+        pdf.cell(hour_w,hour_h,border=1,txt=str(self.hours.get('meeting',0)))
 
         return pdf
-
 
     def summation(self):
         hourly_rate = self.get_hourly_rate()
@@ -452,6 +492,7 @@ class Penger:
 
     def __init__(self):
         self.config = {}
+        self.hours = {}
         self.args = None
         self.filtered_entires = []
         self.sum_hour = 0
