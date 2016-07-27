@@ -143,19 +143,33 @@ class Penger:
         activity_str = activity_str.strip().lower()
         if activity_str == '':
             return
-
         if activity_str in 'meet' or activity_str in 'meeting':
-            self.hours['meeting'] = self.hours.setdefault('meeting',0) + time_sum
+            self.hours['meeting'] = self.hours.get('meeting',0) + time_sum
         elif activity_str in 'class perparation' or activity_str in 'cprep':
-            self.hours['cperp'] = self.hours.setdefault('cprep', 0) + time_sum
+            self.hours['cperp'] = self.hours.get('cprep', 0) + time_sum
         elif activity_str in 'lab preparation' or activity_str in 'lprep':
-            self.hours['lprep'] = self.hours.setdefault('lprep',0) + time_sum
+            self.hours['lprep'] = self.hours.get('lprep',0) + time_sum
         elif activity_str in 'class':
-            self.hours['class'] = self.hours.setdefault('class',0) + time_sum
+            self.hours['class'] = self.hours.get('class',0) + time_sum
         elif activity_str in 'lab':
-            self.hours['lab'] = self.hours.setdefault('lab',0) + time_sum
+            self.hours['lab'] = self.hours.get('lab',0) + time_sum
         elif activity_str in 'communication' or activity_str in 'com':
-            self.hours['com'] = self.hours.setdefault('com', 0) + time_sum
+            self.hours['com'] = self.hours.get('com', 0) + time_sum
+        elif 'oblig' in activity_str:
+            oblig_lst = activity_str.split()
+            # Index overview 0: Oblig name
+            #               1: Oblig num
+            #               2: Try number?
+            #               3: Number of obligs
+            # Saves the trynum and Number of Obligs in a key named after the oblig num
+
+            key = '{0}:{1}'.format(oblig_lst[1],oblig_lst[2])
+            tmp = self.oblig.get(key,[0,0])
+            tmp[0] += int(oblig_lst[3])
+            tmp[1] += time_sum
+
+            self.oblig[key] = tmp # Finally it will look like {'2:1': [20, 2L]}
+
         else:
             self.hours['other'] = self.hours.setdefault('other', 0) + time_sum
 
@@ -238,7 +252,7 @@ class Penger:
                 .format(self.config['timesheet'])
             exit(1)
 
-        re_sheet = re.compile(ur'(^[0-9- :]+)([ a-zA-Z]+)?(#[ \S]*$)?', re.MULTILINE)
+        re_sheet = re.compile(ur'(^[0-9- :]+)([ a-zA-Z0-9:]*)?(#[ \S]*$)?', re.MULTILINE)
 
         sheet_data = re.findall(re_sheet, sheet_data)
 
@@ -369,7 +383,6 @@ class Penger:
                 time_from = time_from.strftime('%H:%M')
                 time_to = time_to.strftime('%H:%M')
 
-
             if self.config.get('mode'):
                 self.parse_activity(entry[1],time_sum)
             self.sum_hour += time_sum
@@ -462,7 +475,10 @@ class Penger:
 
         # Done with 2nd Line
 
-        #Specification of the hours
+        # Specification of the hours
+
+        print self.oblig
+        print self.hours
 
         pdf.cell(pdf.w/2,info_heigth/2,txt='Specification of hours',ln=1)
         pdf.set_font('Arial', size=14)
@@ -472,13 +488,34 @@ class Penger:
         hour_h = 15
         hour_w = page_width / 2
 
-        print self.hours
-
-        pdf.cell(hour_w,hour_h/3,txt="Activity",border=1)
-        pdf.cell(hour_w,hour_h/3,txt="Number of hours",border=1,ln=1)
+        pdf.cell(hour_w,hour_h/2,txt="Activity",border=1)
+        pdf.cell(hour_w,hour_h/2,txt="Number of hours",border=1,ln=1)
 
         pdf.cell(hour_w,hour_h,border=1,txt='Meeting')
-        pdf.cell(hour_w,hour_h,border=1,txt=str(self.hours.get('meeting',0)))
+        pdf.cell(hour_w,hour_h,border=1,ln=1,txt=str(self.hours.get('meeting',0)))
+
+        pdf.cell(hour_w, hour_h, border=1, txt='Preparation for lab')
+        pdf.cell(hour_w, hour_h, border=1, ln=1, txt=str(self.hours.get('lprep', 0)))
+
+        pdf.cell(hour_w, hour_h, border=1, txt='Lab')
+        pdf.cell(hour_w, hour_h, border=1, ln=1, txt=str(self.hours.get('lab', 0)))
+
+        pdf.cell(hour_w, hour_h, border=1, txt='Preparation for Class')
+        pdf.cell(hour_w, hour_h, border=1, ln=1, txt=str(self.hours.get('cprep', 0)))
+
+        pdf.cell(hour_w, hour_h, border=1, txt='Class')
+        pdf.cell(hour_w, hour_h, border=1, ln=1, txt=str(self.hours.get('class', 0)))
+
+        pdf.cell(hour_w, hour_h, border=1, txt='Communication outside class')
+        pdf.cell(hour_w, hour_h, border=1, ln=1, txt=str(self.hours.get('com', 0)))
+
+        pdf.cell(hour_w, hour_h, border=1, txt='Other -- DO I NEED TO IMPLEMENT? --')
+        pdf.cell(hour_w, hour_h, border=1, ln=1, txt=str(self.hours.get('meeting', 0)))
+
+        # Specification for the oblig's
+
+
+
 
         return pdf
 
@@ -493,6 +530,7 @@ class Penger:
     def __init__(self):
         self.config = {}
         self.hours = {}
+        self.oblig = {}
         self.args = None
         self.filtered_entires = []
         self.sum_hour = 0
