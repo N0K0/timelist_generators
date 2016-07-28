@@ -142,19 +142,21 @@ class Penger:
     def parse_activity(self,activity_str,time_sum):
         activity_str = activity_str.strip().lower()
         if activity_str == '':
+            self.hours['other'] = self.hours.setdefault('other', 0.0) + time_sum
             return
+
         if activity_str in 'meet' or activity_str in 'meeting':
-            self.hours['meeting'] = self.hours.get('meeting',0) + time_sum
+            self.hours['meeting'] = self.hours.get('meeting',0.0) + time_sum
         elif activity_str in 'class perparation' or activity_str in 'cprep':
-            self.hours['cperp'] = self.hours.get('cprep', 0) + time_sum
+            self.hours['cperp'] = self.hours.get('cprep', 0.0) + time_sum
         elif activity_str in 'lab preparation' or activity_str in 'lprep':
-            self.hours['lprep'] = self.hours.get('lprep',0) + time_sum
+            self.hours['lprep'] = self.hours.get('lprep',0.0) + time_sum
         elif activity_str in 'class':
-            self.hours['class'] = self.hours.get('class',0) + time_sum
+            self.hours['class'] = self.hours.get('class',0.0) + time_sum
         elif activity_str in 'lab':
-            self.hours['lab'] = self.hours.get('lab',0) + time_sum
+            self.hours['lab'] = self.hours.get('lab',0.0) + time_sum
         elif activity_str in 'communication' or activity_str in 'com':
-            self.hours['com'] = self.hours.get('com', 0) + time_sum
+            self.hours['com'] = self.hours.get('com', 0.0) + time_sum
         elif 'oblig' in activity_str:
             oblig_lst = activity_str.split()
             # Index overview 0: Oblig name
@@ -206,13 +208,12 @@ class Penger:
         if len(time_str) == 1:
             time_from = None
             time_to = None
-            hour_sum = int(time_str[0])
+            hour_sum = float(time_str[0])
         else:
             time_from, time_to = self.parse_hours(time_str[0]), self.parse_hours(time_str[1])
             time_delta = time_to - time_from
             # Using this janky shit of an formula since UiO has an outdated timedate (total_sec is not implmented)
-            hour_sum = (time_delta.microseconds +
-                (time_delta.seconds + time_delta.days * 24 * 3600) * 10 ** 6) / 10 ** 6 / 3600
+            hour_sum = time_delta.days * 24.0 + time_delta.seconds / 3600.0
 
         return hour_sum, time_from, time_to
 
@@ -375,7 +376,6 @@ class Penger:
             week_num = str(datetime_obj.isocalendar()[1])
 
             time_sum, time_from, time_to = self.get_hours(entry[0])
-
             if time_from is None and time_to is None:
                 time_to = 'Hours'
                 time_from = str(time_sum)
@@ -477,9 +477,6 @@ class Penger:
 
         # Specification of the hours
 
-        print self.oblig
-        print self.hours
-
         pdf.cell(pdf.w/2,info_heigth/2,txt='Specification of hours',ln=1)
         pdf.set_font('Arial', size=14)
         pdf.cell(pdf.w,info_heigth/2,txt='(Doubleclass of lecturing = 2 hours, or rounded to nearest quarter hour)',ln=1)
@@ -509,8 +506,8 @@ class Penger:
         pdf.cell(hour_w, hour_h, border=1, txt='Communication outside class')
         pdf.cell(hour_w, hour_h, border=1, ln=1, txt=str(self.hours.get('com', 0)))
 
-        pdf.cell(hour_w, hour_h, border=1, txt='Other -- DO I NEED TO IMPLEMENT? --')
-        pdf.cell(hour_w, hour_h, border=1, ln=1, txt=str(self.hours.get('meeting', 0)))
+        pdf.cell(hour_w, hour_h, border=1, txt='Other (See worklog for reference)')
+        pdf.cell(hour_w, hour_h, border=1, ln=1, txt=str(self.hours.get('other', 0)))
 
         # Specification for the oblig's
 
@@ -549,13 +546,13 @@ hour_str_formats = [r'%H:%M', r'%H']
 summation = r'''
 Pay grade                  {0}
 
-Hourly rate:               {1}
-Hours worked               {2}
+Hourly rate:               {1:.1f}
+Hours worked               {2:.2f}
 ---------------------------------
-Pre-tax                    {3}
-Taxation ({4})             {5}
+Pre-tax                    {3:.1f}
+Taxation ({4})             {5:.1f}
 =================================
-Post-tax                   {6}
+Post-tax                   {6:.1f}
 '''
 
 timesheet_example = r'''
