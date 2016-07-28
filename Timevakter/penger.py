@@ -208,6 +208,7 @@ class Penger:
         if len(time_str) == 1:
             time_from = None
             time_to = None
+            print time_str
             hour_sum = float(time_str[0])
         else:
             time_from, time_to = self.parse_hours(time_str[0]), self.parse_hours(time_str[1])
@@ -240,7 +241,7 @@ class Penger:
                 date_end = datetime(date_today.year, date_today.month + 1, 1)
                 date_end = date_end - timedelta(seconds=1)
 
-            self.config['month name'] = date_start.strftime('%B')
+            self.config['month name'] = date_start.strftime('%B - %Y')
             return date_start, date_end
 
         sheet_data = ''
@@ -444,7 +445,7 @@ class Penger:
         page_width = pdf.w - pdf.l_margin - pdf.r_margin #Size of actual page area
         #Information about the TA
         info_width = page_width/3
-        info_heigth = 20
+        info_heigth = 15
 
         # 1st line
         pdf.set_font('Arial', size=8)
@@ -482,7 +483,7 @@ class Penger:
         pdf.cell(pdf.w,info_heigth/2,txt='(Doubleclass of lecturing = 2 hours, or rounded to nearest quarter hour)',ln=1)
         pdf.set_font('Arial', size=14,style='B')
 
-        hour_h = 15
+        hour_h = 12
         hour_w = page_width / 2
 
         pdf.cell(hour_w,hour_h/2,txt="Activity",border=1)
@@ -509,7 +510,50 @@ class Penger:
         pdf.cell(hour_w, hour_h, border=1, txt='Other (See worklog for reference)')
         pdf.cell(hour_w, hour_h, border=1, ln=1, txt=str(self.hours.get('other', 0)))
 
+        pdf.ln(10)
+
         # Specification for the oblig's
+
+        oblig_w = page_width/4
+        oblig_h = hour_h
+
+        pdf.cell(oblig_w, oblig_h/2, border=1, txt="Oblig number")
+        pdf.cell(oblig_w, oblig_h/2, border=1, txt="Try number")
+        pdf.cell(oblig_w, oblig_h/2, border=1, txt="Number of obligs")
+        pdf.cell(oblig_w, oblig_h/2, border=1, txt="Sum hours" , ln=1)
+
+        for entry in self.oblig:
+            oblig_num, try_num = entry.split(':',1)
+            corrected, hours = self.oblig.get(entry,(0,0))
+
+            pdf.cell(oblig_w,oblig_h,border=1,txt=str(oblig_num))
+            pdf.cell(oblig_w, oblig_h, border=1, txt=str(try_num))
+            pdf.cell(oblig_w, oblig_h, border=1, txt=str(corrected))
+            pdf.cell(oblig_w, oblig_h, border=1, txt=str(hours),ln=1)
+
+
+        pdf.ln(10)
+
+        #Done with oblig spec
+
+        #Adding signature field
+
+        sign_w = page_width/8
+        sign_h = oblig_h
+
+        pdf.cell
+
+        pdf.set_font('Arial', size=8)
+        x, y = pdf.get_x(), pdf.get_y()
+        pdf.cell(sign_w, 5, txt='Date')
+        pdf.cell(sign_w*3.5, 5, txt='Student')
+        pdf.cell(sign_w*3.5, 5, txt='Course administrator')
+        pdf.set_xy(x, y)
+
+        pdf.set_font('Arial', size=14, style='B')
+        pdf.cell(sign_w, sign_h, align='C', border=1, txt='')
+        pdf.cell(sign_w*3.5, sign_h, align='C', border=1, txt='')
+        pdf.cell(sign_w*3.5, sign_h, align='C', border=1, txt='')
 
 
 
