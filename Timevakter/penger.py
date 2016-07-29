@@ -19,7 +19,7 @@ try:
 except ImportError as err:
     FPDF = None
     print 'Unable to import fpdf, please download the package'
-    print 'NOTE: On uio? You can use \'pip install --user fpdf\' '\
+    print 'NOTE: On uio? You can use \'pip install --user fpdf\' ' \
           'to install without locally without the need of Sudo'
     raise err
 
@@ -69,7 +69,6 @@ class Penger:
             self.config['rate'] = 0
             return self.config['rate']
 
-
         line = lines[grade - 19]
         self.config['rate'] = float(line.split(';')[2])
 
@@ -111,8 +110,8 @@ class Penger:
             for pair in config_res:
                 self.config[pair[0]] = pair[1].strip()
 
-            non_ta_set = {'name','timesheet','pnr','position','place','pay grade'}
-            ta_set = {'name','subject code','timesheet','birth date'}
+            non_ta_set = {'name', 'timesheet', 'pnr', 'position', 'place', 'pay grade'}
+            ta_set = {'name', 'subject code', 'timesheet', 'birth date'}
 
             non_ta_set = set(non_ta_set) - set(self.config.keys())
             ta_set = set(ta_set) - set(self.config.keys())
@@ -129,33 +128,33 @@ class Penger:
                 self.config['position'] = 'Teaching assistant'
             else:
                 print "Error with the keys in the config file."
-                print "Has found: {0}\nMissing the following key(s) for non-TA: {1}\nMissing the following key(s) for TA: {2}\n"\
-                    .format(', '.join(self.config.keys()),', '.join(non_ta_set),', '.join(ta_set))
+                print "Has found: {0}\nMissing the following key(s) for non-TA: {1}\nMissing the following key(s) for TA: {2}\n" \
+                    .format(', '.join(self.config.keys()), ', '.join(non_ta_set), ', '.join(ta_set))
                 print timerc_example
                 exit(1)
 
-            self.config['tax percentage'] = float(self.config.setdefault('tax percentage',0))
-            self.config['pay grade'] = int(self.config.setdefault('pay grade',0))
+            self.config['tax percentage'] = float(self.config.setdefault('tax percentage', 0))
+            self.config['pay grade'] = int(self.config.setdefault('pay grade', 0))
         except IOError:
             print "Unable to find a .timerc file, creating an example file for you"
 
-    def parse_activity(self,activity_str,time_sum):
+    def parse_activity(self, activity_str, time_sum):
         activity_str = activity_str.strip().lower()
         if activity_str == '':
             self.hours['other'] = self.hours.setdefault('other', 0.0) + time_sum
-            return
+            return 'other'
 
-        if activity_str in 'meet' or activity_str in 'meeting':
-            self.hours['meeting'] = self.hours.get('meeting',0.0) + time_sum
-        elif activity_str in 'class perparation' or activity_str in 'cprep':
-            self.hours['cperp'] = self.hours.get('cprep', 0.0) + time_sum
-        elif activity_str in 'lab preparation' or activity_str in 'lprep':
-            self.hours['lprep'] = self.hours.get('lprep',0.0) + time_sum
-        elif activity_str in 'class':
-            self.hours['class'] = self.hours.get('class',0.0) + time_sum
-        elif activity_str in 'lab':
-            self.hours['lab'] = self.hours.get('lab',0.0) + time_sum
-        elif activity_str in 'communication' or activity_str in 'com':
+        if 'meet' in activity_str or 'meeting' in activity_str:
+            self.hours['meeting'] = self.hours.get('meeting', 0.0) + time_sum
+        elif 'class preparation' in activity_str or 'cprep' in activity_str:
+            self.hours['cprep'] = self.hours.get('cprep', 0.0) + time_sum
+        elif 'lab preparation' in activity_str or 'lprep' in activity_str:
+            self.hours['lprep'] = self.hours.get('lprep', 0.0) + time_sum
+        elif 'class' in activity_str:
+            self.hours['class'] = self.hours.get('class', 0.0) + time_sum
+        elif 'lab' in activity_str:
+            self.hours['lab'] = self.hours.get('lab', 0.0) + time_sum
+        elif 'communication' in activity_str or 'com' in activity_str:
             self.hours['com'] = self.hours.get('com', 0.0) + time_sum
         elif 'oblig' in activity_str:
             oblig_lst = activity_str.split()
@@ -165,15 +164,15 @@ class Penger:
             #               3: Number of obligs
             # Saves the trynum and Number of Obligs in a key named after the oblig num
 
-            key = '{0}:{1}'.format(oblig_lst[1],oblig_lst[2])
-            tmp = self.oblig.get(key,[0,0])
+            key = '{0}:{1}'.format(oblig_lst[1], oblig_lst[2])
+            tmp = self.oblig.get(key, [0, 0])
             tmp[0] += int(oblig_lst[3])
             tmp[1] += time_sum
 
-            self.oblig[key] = tmp # Finally it will look like {'2:1': [20, 2L]}
-
+            self.oblig[key] = tmp  # Finally it will look like {'2:1': [20, 2L]}
         else:
             self.hours['other'] = self.hours.setdefault('other', 0) + time_sum
+            return 'other'
 
     @staticmethod
     def parse_date(date_str):
@@ -208,7 +207,6 @@ class Penger:
         if len(time_str) == 1:
             time_from = None
             time_to = None
-            print time_str
             hour_sum = float(time_str[0])
         else:
             time_from, time_to = self.parse_hours(time_str[0]), self.parse_hours(time_str[1])
@@ -269,7 +267,7 @@ class Penger:
     def extra_actions(self):  # This is the part that manages printing and mailing users
         if self.args.e:
 
-            if not "uio.no" in socket.getfqdn():
+            if "uio.no" not in socket.getfqdn():
                 print "Note: found something other than the uio.no domain, mail might not work"
 
             addr_to = self.args.e
@@ -283,14 +281,13 @@ class Penger:
             if 'nt' in os.name:  # Windows systems
                 args = shlex.split(
                     r'powershell.exe -NoProfile Send-MailMessage '
-                    r'-To {0} -From {0} -Subject {1} -SmtpServer {2} -Attachments "{3}"'
-                        .format(addr_to, subject, smtp, atta))
+                    r'-To {0} -From {0} -Subject {1} -SmtpServer {2} -Attachments "{3}"'.format(
+                        addr_to, subject, smtp, atta))
 
                 try:
                     Popen(args=args, shell=True, stdin=PIPE, stdout=PIPE)
                 except OSError:
                     print "Unable to find powershell... what on earth are you running?\nUse a UiO machine"
-
 
             elif 'posix' in os.name:  # Nix systems
                 args = shlex.split(r'mailx -a {0} -s "{1}" {2}'.format(atta, subject, addr_to))
@@ -369,7 +366,6 @@ class Penger:
 
         for entry in self.filtered_entires:
 
-
             entry_date = entry[0].split(':')
             datetime_obj = self.parse_date(entry_date[0])
             datetime_str = datetime_obj.strftime('%Y-%m-%d')
@@ -384,12 +380,15 @@ class Penger:
                 time_from = time_from.strftime('%H:%M')
                 time_to = time_to.strftime('%H:%M')
 
-            if self.config.get('mode'):
-                self.parse_activity(entry[1],time_sum)
-            self.sum_hour += time_sum
-
             note = str(entry[2])
             note = note[1:].strip().decode('UTF-8')
+
+            if self.config.get('mode'):
+                ret = self.parse_activity(entry[1], time_sum)
+
+                if ret is not None:
+                    note += ' (other)'
+            self.sum_hour += time_sum
 
             note_height = cell_height
 
@@ -404,7 +403,7 @@ class Penger:
 
             x, y = pdf.get_x(), pdf.get_y()
 
-            pdf.set_font('Courier',size=12, style='b')
+            pdf.set_font('Courier', size=12, style='b')
             pdf.multi_cell(note_size, note_height, border=1, txt=note, align='c')  # Notes
             pdf.set_font('Arial', size=12, style='b')
 
@@ -426,7 +425,7 @@ class Penger:
         file_name = datetime.now().strftime("%Y-%m-%d.pdf")
 
         if self.config.get('mode') is 'ta':
-            pdf  = self.TA_page(pdf)
+            pdf = self.TA_page(pdf)
 
         if self.args.o:
             file_name = self.args.o
@@ -435,62 +434,64 @@ class Penger:
 
         self.config['output name'] = file_name
 
+    # noinspection PyPep8Naming
     def TA_page(self, pdf):
         pdf.set_font('Arial', size=12)
 
-        first_name, last_name = self.config['name'].rsplit(' ',1)
+        first_name, last_name = self.config['name'].rsplit(' ', 1)
         birth_date = self.config['birth date']
 
         pdf.add_page()
-        page_width = pdf.w - pdf.l_margin - pdf.r_margin #Size of actual page area
-        #Information about the TA
-        info_width = page_width/3
+        page_width = pdf.w - pdf.l_margin - pdf.r_margin  # Size of actual page area
+        # Information about the TA
+        info_width = page_width / 3
         info_heigth = 15
 
         # 1st line
         pdf.set_font('Arial', size=8)
         x, y = pdf.get_x(), pdf.get_y()
-        pdf.cell(info_width,5,txt='First Name')
-        pdf.cell(info_width,5,txt='Subject Code')
-        pdf.cell(info_width,5,txt='Date of Birth')
-        pdf.set_xy(x,y)
+        pdf.cell(info_width, 5, txt='First Name')
+        pdf.cell(info_width, 5, txt='Subject Code')
+        pdf.cell(info_width, 5, txt='Date of Birth')
+        pdf.set_xy(x, y)
 
-        pdf.set_font('Arial', size=14,style='B')
-        pdf.cell(info_width,info_heigth,align='C',border=1,txt=first_name)
-        pdf.cell(info_width,info_heigth,align='C',border=1,txt=self.config['subject code'])
-        pdf.cell(info_width,info_heigth,align='C',border=1,txt=birth_date,ln=1)
+        pdf.set_font('Arial', size=14, style='B')
+        pdf.cell(info_width, info_heigth, align='C', border=1, txt=first_name)
+        pdf.cell(info_width, info_heigth, align='C', border=1, txt=self.config['subject code'])
+        pdf.cell(info_width, info_heigth, align='C', border=1, txt=birth_date, ln=1)
 
         # 2nd line
         pdf.set_font('Arial', size=8)
         x, y = pdf.get_x(), pdf.get_y()
-        pdf.cell(info_width,5,txt='Last Name')
-        pdf.cell(info_width,5,txt='Month')
-        pdf.cell(info_width,5,txt='Total number of hours')
-        pdf.set_xy(x,y)
+        pdf.cell(info_width, 5, txt='Last Name')
+        pdf.cell(info_width, 5, txt='Month')
+        pdf.cell(info_width, 5, txt='Total number of hours')
+        pdf.set_xy(x, y)
 
-        pdf.set_font('Arial', size=14,style='B')
-        pdf.cell(info_width,info_heigth,align='C',border=1,txt=last_name)
-        pdf.cell(info_width,info_heigth,align='C',border=1,txt=self.config['month name'])
-        pdf.cell(info_width,info_heigth,align='C',border=1,txt=str(self.sum_hour),ln=1)
+        pdf.set_font('Arial', size=14, style='B')
+        pdf.cell(info_width, info_heigth, align='C', border=1, txt=last_name)
+        pdf.cell(info_width, info_heigth, align='C', border=1, txt=self.config['month name'])
+        pdf.cell(info_width, info_heigth, align='C', border=1, txt=str(self.sum_hour), ln=1)
         pdf.ln(10)
 
         # Done with 2nd Line
 
         # Specification of the hours
 
-        pdf.cell(pdf.w/2,info_heigth/2,txt='Specification of hours',ln=1)
+        pdf.cell(pdf.w / 2, info_heigth / 2, txt='Specification of hours', ln=1)
         pdf.set_font('Arial', size=14)
-        pdf.cell(pdf.w,info_heigth/2,txt='(Doubleclass of lecturing = 2 hours, or rounded to nearest quarter hour)',ln=1)
-        pdf.set_font('Arial', size=14,style='B')
+        pdf.cell(pdf.w, info_heigth / 2, txt='(Doubleclass of lecturing = 2 hours, or rounded to nearest quarter hour)',
+                 ln=1)
+        pdf.set_font('Arial', size=14, style='B')
 
         hour_h = 12
         hour_w = page_width / 2
 
-        pdf.cell(hour_w,hour_h/2,txt="Activity",border=1)
-        pdf.cell(hour_w,hour_h/2,txt="Number of hours",border=1,ln=1)
+        pdf.cell(hour_w, hour_h / 2, txt="Activity", border=1)
+        pdf.cell(hour_w, hour_h / 2, txt="Number of hours", border=1, ln=1)
 
-        pdf.cell(hour_w,hour_h,border=1,txt='Meeting')
-        pdf.cell(hour_w,hour_h,border=1,ln=1,txt=str(self.hours.get('meeting',0)))
+        pdf.cell(hour_w, hour_h, border=1, txt='Meeting')
+        pdf.cell(hour_w, hour_h, border=1, ln=1, txt=str(self.hours.get('meeting', 0)))
 
         pdf.cell(hour_w, hour_h, border=1, txt='Preparation for lab')
         pdf.cell(hour_w, hour_h, border=1, ln=1, txt=str(self.hours.get('lprep', 0)))
@@ -514,49 +515,43 @@ class Penger:
 
         # Specification for the oblig's
 
-        oblig_w = page_width/4
+        oblig_w = page_width / 4
         oblig_h = hour_h
 
-        pdf.cell(oblig_w, oblig_h/2, border=1, txt="Oblig number")
-        pdf.cell(oblig_w, oblig_h/2, border=1, txt="Try number")
-        pdf.cell(oblig_w, oblig_h/2, border=1, txt="Number of obligs")
-        pdf.cell(oblig_w, oblig_h/2, border=1, txt="Sum hours" , ln=1)
+        pdf.cell(oblig_w, oblig_h / 2, border=1, txt="Oblig number")
+        pdf.cell(oblig_w, oblig_h / 2, border=1, txt="Try number")
+        pdf.cell(oblig_w, oblig_h / 2, border=1, txt="Number of obligs")
+        pdf.cell(oblig_w, oblig_h / 2, border=1, txt="Sum hours", ln=1)
 
         for entry in self.oblig:
-            oblig_num, try_num = entry.split(':',1)
-            corrected, hours = self.oblig.get(entry,(0,0))
+            oblig_num, try_num = entry.split(':', 1)
+            corrected, hours = self.oblig.get(entry, (0, 0))
 
-            pdf.cell(oblig_w,oblig_h,border=1,txt=str(oblig_num))
+            pdf.cell(oblig_w, oblig_h, border=1, txt=str(oblig_num))
             pdf.cell(oblig_w, oblig_h, border=1, txt=str(try_num))
             pdf.cell(oblig_w, oblig_h, border=1, txt=str(corrected))
-            pdf.cell(oblig_w, oblig_h, border=1, txt=str(hours),ln=1)
-
+            pdf.cell(oblig_w, oblig_h, border=1, txt=str(hours), ln=1)
 
         pdf.ln(10)
 
-        #Done with oblig spec
+        # Done with oblig spec
 
-        #Adding signature field
+        # Adding signature field
 
-        sign_w = page_width/8
+        sign_w = page_width / 8
         sign_h = oblig_h
-
-        pdf.cell
 
         pdf.set_font('Arial', size=8)
         x, y = pdf.get_x(), pdf.get_y()
         pdf.cell(sign_w, 5, txt='Date')
-        pdf.cell(sign_w*3.5, 5, txt='Student')
-        pdf.cell(sign_w*3.5, 5, txt='Course administrator')
+        pdf.cell(sign_w * 3.5, 5, txt='Student')
+        pdf.cell(sign_w * 3.5, 5, txt='Course administrator')
         pdf.set_xy(x, y)
 
         pdf.set_font('Arial', size=14, style='B')
         pdf.cell(sign_w, sign_h, align='C', border=1, txt='')
-        pdf.cell(sign_w*3.5, sign_h, align='C', border=1, txt='')
-        pdf.cell(sign_w*3.5, sign_h, align='C', border=1, txt='')
-
-
-
+        pdf.cell(sign_w * 3.5, sign_h, align='C', border=1, txt='')
+        pdf.cell(sign_w * 3.5, sign_h, align='C', border=1, txt='')
 
         return pdf
 
