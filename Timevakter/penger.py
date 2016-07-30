@@ -182,9 +182,7 @@ class Penger:
                 return datetime.strptime(date_str, date_format) + timedelta(seconds=1)
             except ValueError:
                 pass
-
-        print r"Error parsing the following date: {0}".format(date_str)
-        exit(1)
+        return False
 
     @staticmethod
     def parse_hours(hour_str):
@@ -195,21 +193,25 @@ class Penger:
             except ValueError:
                 pass
 
-        print "Error parsing the following timerange: '{0}'".format(hour_str)
-        exit(1)
+        return False
 
     def get_hours(self, hour_str):
         p = re.compile(ur':(.*)$', re.MULTILINE)
 
         time_res = re.search(p, hour_str)
-        time_str = str(time_res.groups(0)[0]).strip()
-        time_str = time_str.split('-')
+        time_str_org = str(time_res.groups(0)[0]).strip()
+        time_str = time_str_org.split('-')
         if len(time_str) == 1:
             time_from = None
             time_to = None
             hour_sum = float(time_str[0])
         else:
             time_from, time_to = self.parse_hours(time_str[0]), self.parse_hours(time_str[1])
+
+            if time_from is False or time_to is False:
+                print "Error parsing the following timerange: '{0}'".format(time_str_org)
+                exit(1)
+
             time_delta = time_to - time_from
             # Using this janky shit of an formula since UiO has an outdated timedate (total_sec is not implmented)
             hour_sum = time_delta.days * 24.0 + time_delta.seconds / 3600.0
@@ -261,6 +263,11 @@ class Penger:
         for entry in sheet_data:
             entry_date = entry[0].split(':')[0]
             parsed_date = self.parse_date(entry_date)
+
+            if parsed_date is False:
+                print r"Error parsing the following date: {0}\nCheck your timesheet".format(entry)
+                exit(1)
+
             if date_start <= parsed_date <= date_end:
                 self.filtered_entires.append(entry)
 
@@ -430,7 +437,13 @@ class Penger:
         if self.args.o:
             file_name = self.args.o
 
-        pdf.output(file_name)
+
+        try:
+            pdf.output(file_name)
+        except IOError as e:
+            print "Could not write to {0}".format(file_name)
+            print "Is the PDF open in a reader?"
+            exit(1)
 
         self.config['output name'] = file_name
 
