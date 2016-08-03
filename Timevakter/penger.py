@@ -122,9 +122,9 @@ class Penger:
                 exit(1)
 
             if len(non_ta_set) == 0:
-                self.config['mode'] = 'non-ta'
+                self.config['extended'] = False
             elif len(ta_set) == 0:
-                self.config['mode'] = 'ta'
+                self.config['extended'] = True
                 self.config['position'] = 'Teaching assistant'
             else:
                 print "Error with the keys in the config file."
@@ -143,19 +143,24 @@ class Penger:
         if activity_str == '':
             self.hours['other'] = self.hours.setdefault('other', 0.0) + time_sum
             return 'other'
-
         if 'meet' in activity_str or 'meeting' in activity_str:
             self.hours['meeting'] = self.hours.get('meeting', 0.0) + time_sum
+            return 'meeting'
         elif 'class preparation' in activity_str or 'cprep' in activity_str:
             self.hours['cprep'] = self.hours.get('cprep', 0.0) + time_sum
+            return 'class preparation'
         elif 'lab preparation' in activity_str or 'lprep' in activity_str:
             self.hours['lprep'] = self.hours.get('lprep', 0.0) + time_sum
+            return 'lab preparation'
         elif 'class' in activity_str:
             self.hours['class'] = self.hours.get('class', 0.0) + time_sum
+            return 'class'
         elif 'lab' in activity_str:
             self.hours['lab'] = self.hours.get('lab', 0.0) + time_sum
+            return 'lab'
         elif 'communication' in activity_str or 'com' in activity_str:
             self.hours['com'] = self.hours.get('com', 0.0) + time_sum
+            return 'communication'
         elif 'oblig' in activity_str:
             oblig_lst = activity_str.split()
             # Index overview 0: Oblig name
@@ -170,6 +175,8 @@ class Penger:
             tmp[1] += time_sum
 
             self.oblig[key] = tmp  # Finally it will look like {'2:1': [20, 2L]}
+            return 'oblig'
+
         else:
             self.hours['other'] = self.hours.setdefault('other', 0) + time_sum
             return 'other'
@@ -254,7 +261,7 @@ class Penger:
                 .format(self.config['timesheet'])
             exit(1)
 
-        re_sheet = re.compile(ur'(^[0-9- :]+)([ a-zA-Z0-9:]*)?(#[ \S]*$)?', re.MULTILINE)
+        re_sheet = re.compile(ur'(^[0-9- :.,]+)([ a-zA-Z0-9:]*)?(#[ \S]*$)?', re.MULTILINE)
 
         sheet_data = re.findall(re_sheet, sheet_data)
 
@@ -371,8 +378,9 @@ class Penger:
         # Done creating top row
         pdf.set_font('Arial', size=12, style='b')
 
-        for entry in self.filtered_entires:
 
+        #Actually figuring out how many hours and such here
+        for entry in self.filtered_entires:
             entry_date = entry[0].split(':')
             datetime_obj = self.parse_date(entry_date[0])
             datetime_str = datetime_obj.strftime('%Y-%m-%d')
@@ -390,12 +398,14 @@ class Penger:
             note = str(entry[2])
             note = note[1:].strip().decode('UTF-8')
 
-            if self.config.get('mode'):
+            if self.config.get('extended') is True:
                 ret = self.parse_activity(entry[1], time_sum)
+                note += '({0})'.format(ret)
 
-                if ret is not None:
-                    note += ' (other)'
+            note = note.strip()
             self.sum_hour += time_sum
+
+
 
             note_height = cell_height
 
@@ -431,7 +441,7 @@ class Penger:
 
         file_name = datetime.now().strftime("%Y-%m-%d.pdf")
 
-        if self.config.get('mode') is 'ta':
+        if self.config.get('extended') is True:
             pdf = self.TA_page(pdf)
 
         if self.args.o:
