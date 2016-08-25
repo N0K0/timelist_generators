@@ -347,7 +347,7 @@ class Penger:
         pdf.add_page()
 
         pdf.set_font('Arial')
-        pdf.multi_cell(w=200, h=8, txt="Name: {0}\nStilling: {1}\nPay grade: {2}\nPlace of work: {3}\nSSN: {4}"
+        pdf.multi_cell(w=200, h=8, txt="Name: {0}\nPosistion: {1}\nPay grade: {2}\nPlace of work: {3}\nSSN: {4}"
                        .format(self.config['name'], self.config['position'], self.config['pay grade'],
                                self.config['place'],
                                self.config['pnr']), align='L')
