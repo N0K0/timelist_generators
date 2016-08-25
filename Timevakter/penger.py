@@ -110,8 +110,8 @@ class Penger:
             for pair in config_res:
                 self.config[pair[0]] = pair[1].strip()
 
-            non_ta_set = {'name', 'timesheet', 'pnr', 'position', 'place', 'pay grade'}
-            ta_set = {'name', 'subject code', 'timesheet', 'birth date'}
+            non_ta_set = set({'name', 'timesheet', 'pnr', 'position', 'place', 'pay grade'})
+            ta_set = set({'name', 'subject code', 'timesheet', 'birth date'})
 
             non_ta_set = set(non_ta_set) - set(self.config.keys())
             ta_set = set(ta_set) - set(self.config.keys())
