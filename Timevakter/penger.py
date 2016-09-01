@@ -84,23 +84,23 @@ class Penger:
         parser.add_argument('-e', metavar='--email', type=str, default=None,
                             help='Address to send PDF')
         parser.add_argument('-o', metavar='--output', type=str, default=None, help="name of the PDF file")
-        parser.add_argument('-c', metavar='--config', type=str, default=None,
+        parser.add_argument('-c', metavar='--config', type=str, default=".timerc",
                             help="Specify a config file. Use this if you for example got multiple jobs")
         self.args = parser.parse_args()
 
     def parse_config(self):
 
-        if not os.path.exists('.timerc'):
-            print "NOTE: Was unable to find your .timerc file, so made a new one at {0}" \
-                .format(os.path.abspath('.timerc'))
+        if not os.path.exists(self.args.c):
+            print "NOTE: Was unable to find your time config file, so made a new one at {0}" \
+                .format(os.path.abspath(self.args.c))
 
             example = urllib2.urlopen(timerc_example_url).read()
-            config = open('.timerc', 'w')
+            config = open(self.args.c, 'w')
             config.write(example)
             config.close()
 
         try:
-            config = open('.timerc', 'r')
+            config = open(self.args.c, 'r')
             config_str = config.read()
 
             re_config = re.compile(ur'(.*?):\s+([_\\~./0-9a-zA-Z -]*)(#.*$|$)', re.MULTILINE)
