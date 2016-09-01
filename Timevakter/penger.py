@@ -261,7 +261,7 @@ class Penger:
                 .format(self.config['timesheet'])
             exit(1)
 
-        re_sheet = re.compile(ur'(^[0-9- :.,]+)([ a-zA-Z0-9:]*)?(#[ \S]*$)?', re.MULTILINE)
+        re_sheet = re.compile(ur'(^[0-9- :.,]+)([ a-zA-Z0-9:]+)?(#[ \S]*$)?', re.MULTILINE)
 
         sheet_data = re.findall(re_sheet, sheet_data)
 
