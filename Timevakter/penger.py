@@ -409,7 +409,7 @@ class Penger:
 
             note_height = cell_height
 
-            scalar = math.ceil(len(note) / 28.0)
+            scalar = math.ceil(len(note) / 24.0)
             if scalar > 1:
                 cell_height *= scalar
 
