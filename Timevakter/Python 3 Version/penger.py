@@ -89,12 +89,13 @@ class Penger:
         parser.add_argument('-o', metavar='--output', type=str, default=None, help="name of the PDF file")
         parser.add_argument('-c', metavar='--config', type=str, default=".timerc",
                             help="Specify a config file. Use this if you for example got multiple jobs")
+        parser.add_argument('-s', metavar='--silent', type=bool, default=False, help="Used to generate")
         self.args = parser.parse_args()
 
     def parse_config(self):
 
         if not os.path.exists(self.args.c):
-            print("NOTE: Was unable to find your time config file, so made a new one at {0}" \
+            print("NOTE: Was unable to find your time config file, so made a new one at {0}"
                   .format(os.path.abspath(self.args.c)))
 
             example = request.urlopen(timerc_example_url).read()
@@ -132,8 +133,8 @@ class Penger:
             else:
                 print("Error with the keys in the config file.")
                 print(
-                    "Has found: {0}\nMissing the following key(s) for non-TA: {1}\nMissing the following key(s) for TA: {2}\n"
-                        .format(', '.join(self.config.keys()), ', '.join(non_ta_set), ', '.join(ta_set)))
+                    "Has found: {0}\nMissing the key(s) for non-TA: {1}\nMissing the key(s) for TA: {2}\n"
+                    .format(', '.join(self.config.keys()), ', '.join(non_ta_set), ', '.join(ta_set)))
                 print(timerc_example)
                 exit(1)
 
@@ -224,7 +225,7 @@ class Penger:
                 exit(1)
 
             time_delta = time_to - time_from
-            # Using this horrible shit of an formula since UiO has an outdated timedate (total_sec is not implmented)
+            # Using this horrible shit of an formula since UiO has an outdated timedate (total_sec is not implemented)
             hour_sum = time_delta.days * 24.0 + time_delta.seconds / 3600.0
 
         return hour_sum, time_from, time_to
@@ -280,7 +281,7 @@ class Penger:
                 exit(1)
 
             if date_start <= parsed_date <= date_end:
-                self.filtered_entires.append(entry)
+                self.filtered_entries.append(entry)
 
     def extra_actions(self):  # This is the part that manages printing and mailing users
         if self.args.e:
@@ -288,9 +289,9 @@ class Penger:
             if "uio.no" not in socket.getfqdn():
                 print("Note: found something other than the uio.no domain, mail might not work")
 
-            addr_to = self.args.e
-            atta = os.path.abspath(self.config['output name'])
-            subject = '[Timescript] {0} on behalf of {1}'.format(self.config['output name'],getpass.getuser())
+            address_to = self.args.e
+            attachment = os.path.abspath(self.config['output name'])
+            subject = '[Timescript] {0} on behalf of {1}'.format(self.config['output name'], getpass.getuser())
             smtp = 'smtp.uio.no'
 
             # Run the powershell mail command here
@@ -300,7 +301,7 @@ class Penger:
                 args = shlex.split(
                     r'powershell.exe -NoProfile Send-MailMessage '
                     r'-To {0} -From {0} -Subject {1} -SmtpServer {2} -Attachments "{3}"'.format(
-                        addr_to, subject, smtp, atta))
+                        address_to, subject, smtp, attachment))
 
                 try:
                     Popen(args=args, shell=True, stdin=PIPE, stdout=PIPE)
@@ -308,7 +309,7 @@ class Penger:
                     print("Unable to find powershell... what on earth are you running?\nUse a UiO machine")
 
             elif 'posix' in os.name:  # Unix systems
-                args = shlex.split(r'mailx -a {0} -s "{1}" {2}'.format(atta, subject, addr_to))
+                args = shlex.split(r'mailx -a {0} -s "{1}" {2}'.format(attachment, subject, address_to))
                 try:
                     Popen(args=args, shell=False, stdin=PIPE, stdout=PIPE)
                 except OSError:
@@ -323,13 +324,13 @@ class Penger:
                 # There got to be a cleaner way to do this :C
                 print("Note, might take some time to setup the printer you want")
                 args = shlex.split(
-                    r'powershell.exe (New-Object -ComObject WScript.Network).AddWindowsPrinterConnection("\\pushprint.uio.no\{0}")'.format(
-                        self.args.p), posix=False)
+                    r'powershell.exe (New-Object -ComObject WScript.Network).AddWindowsPrinterConnection("\\pushprint.uio.no\{0}")'
+                    .format(self.args.p), posix=False)
                 shell = Popen(args=args, shell=True, stdin=PIPE, stdout=PIPE)
                 print(shell.communicate())
                 args = shlex.split(
-                    r'powershell.exe (New-Object -ComObject WScript.Network).SetDefaultPrinter("\\pushprint.uio.no\{0}")'.format(
-                        self.args.p), posix=False)
+                    r'powershell.exe (New-Object -ComObject WScript.Network).SetDefaultPrinter("\\pushprint.uio.no\{0}")'
+                    .format(self.args.p), posix=False)
                 shell = Popen(args=args, shell=True, stdin=PIPE, stdout=PIPE)
                 print(shell.communicate())
                 args = shlex.split(r'powershell.exe Start-Process -FilePath {0} -Verb Print'.format(
@@ -354,10 +355,10 @@ class Penger:
         pdf.set_font('Arial')
 
         if self.config['extended']:
-            pdf.multi_cell(w=200, h=8, txt="Name: {0}\nPosistion: {1}\n"
+            pdf.multi_cell(w=200, h=8, txt="Name: {0}\nPosition: {1}\n"
                            .format(self.config['name'], self.config['position'], align='L'))
         else:
-            pdf.multi_cell(w=200, h=8, txt="Name: {0}\nPosistion: {1}\nPay grade: {2}\nPlace of work: {3}\nSSN: {4}"
+            pdf.multi_cell(w=200, h=8, txt="Name: {0}\nPosition: {1}\nPay grade: {2}\nPlace of work: {3}\nSSN: {4}"
                            .format(self.config['name'], self.config['position'], self.config['pay grade'],
                                    self.config['place'],
                                    self.config['pnr']), align='L')
@@ -389,7 +390,7 @@ class Penger:
         pdf.set_font('Arial', size=12, style='b')
 
         # Actually figuring out how many hours and such here
-        for entry in self.filtered_entires:
+        for entry in self.filtered_entries:
             entry_date = entry[0].split(':')
             datetime_obj = self.parse_date(entry_date[0])
             datetime_str = datetime_obj.strftime('%Y-%m-%d')
@@ -474,7 +475,7 @@ class Penger:
         page_width = pdf.w - pdf.l_margin - pdf.r_margin  # Size of actual page area
         # Information about the TA
         info_width = page_width / 3
-        info_heigth = 15
+        info_height = 15
 
         # 1st line
         pdf.set_font('Arial', size=8)
@@ -485,9 +486,9 @@ class Penger:
         pdf.set_xy(x, y)
 
         pdf.set_font('Arial', size=14, style='B')
-        pdf.cell(info_width, info_heigth, align='C', border=1, txt=first_name)
-        pdf.cell(info_width, info_heigth, align='C', border=1, txt=self.config['subject code'])
-        pdf.cell(info_width, info_heigth, align='C', border=1, txt=birth_date, ln=1)
+        pdf.cell(info_width, info_height, align='C', border=1, txt=first_name)
+        pdf.cell(info_width, info_height, align='C', border=1, txt=self.config['subject code'])
+        pdf.cell(info_width, info_height, align='C', border=1, txt=birth_date, ln=1)
 
         # 2nd line
         pdf.set_font('Arial', size=8)
@@ -498,18 +499,18 @@ class Penger:
         pdf.set_xy(x, y)
 
         pdf.set_font('Arial', size=14, style='B')
-        pdf.cell(info_width, info_heigth, align='C', border=1, txt=last_name)
-        pdf.cell(info_width, info_heigth, align='C', border=1, txt=self.config['month name'])
-        pdf.cell(info_width, info_heigth, align='C', border=1, txt=str(self.sum_hour), ln=1)
+        pdf.cell(info_width, info_height, align='C', border=1, txt=last_name)
+        pdf.cell(info_width, info_height, align='C', border=1, txt=self.config['month name'])
+        pdf.cell(info_width, info_height, align='C', border=1, txt=str(self.sum_hour), ln=1)
         pdf.ln(10)
 
         # Done with 2nd Line
 
         # Specification of the hours
 
-        pdf.cell(pdf.w / 2, info_heigth / 2, txt='Specification of hours', ln=1)
+        pdf.cell(pdf.w / 2, info_height / 2, txt='Specification of hours', ln=1)
         pdf.set_font('Arial', size=14)
-        pdf.cell(pdf.w, info_heigth / 2, txt='(Doubleclass of lecturing = 2 hours, or rounded to nearest quarter hour)',
+        pdf.cell(pdf.w, info_height / 2, txt='(Class of lecturing = 2 hours, or rounded to nearest quarter hour)',
                  ln=1)
         pdf.set_font('Arial', size=14, style='B')
 
@@ -537,7 +538,7 @@ class Penger:
         pdf.cell(hour_w, hour_h, border=1, txt='Communication outside class')
         pdf.cell(hour_w, hour_h, border=1, ln=1, txt=str(self.hours.get('com', 0)))
 
-        pdf.cell(hour_w, hour_h, border=1, txt='Other (See worklog for reference)')
+        pdf.cell(hour_w, hour_h, border=1, txt='Other (See work log for reference)')
         pdf.cell(hour_w, hour_h, border=1, ln=1, txt=str(self.hours.get('other', 0)))
 
         pdf.ln(10)
@@ -597,12 +598,15 @@ class Penger:
         self.hours = {}
         self.oblig = {}
         self.args = None
-        self.filtered_entires = []
+        self.filtered_entries = []
         self.sum_hour = 0
-
         self.parse_commands()
         self.parse_config()
         self.parse_timesheet()
+
+        if not self.args.s:
+            gui = ManagerGui()
+
         self.generate_PDF()
         self.extra_actions()
         self.summation()
@@ -666,14 +670,14 @@ NOTE: All the formatting from above works. The only field that is really differe
 
 timerc_example = r'''
 The following things is needed be in the .timerc for non teaching assistants:
-    name:           Namey McName
+    name:           Name McName
     timesheet:      ~/timer.txt          # placement of your timesheet
     pnr:            12345123450          # leave blank if you do not wish this to be added
     position:       Guardian of Time     # name of your position
     place:          IFI                  # place of work
 
 The following things is needed be in the .timerc for teaching assistants:
-    name:           Namey McName
+    name:           Name McName
     subject code:   INF2100              # Subject code
     timesheet:      ~/timer.txt          # placement of your timesheet
 
@@ -681,6 +685,12 @@ Optional arguments for both:
     tax percentage: 0                    # how much you are taxed
     pay grade:      0                    # what pay grade you got
 '''
+
+
+class ManagerGui:
+    def __init__(self):
+        raise NotImplementedError
+
 
 if __name__ == '__main__':
     penger = Penger()
