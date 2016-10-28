@@ -689,6 +689,7 @@ Optional arguments for both:
 
 class ManagerGui:
     def __init__(self):
+        # TODO: Actually implement this module. going to use PyQt
         raise NotImplementedError
 
 
