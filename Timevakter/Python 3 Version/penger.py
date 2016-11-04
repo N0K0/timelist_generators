@@ -12,7 +12,20 @@ import getpass
 import socket
 import tempfile
 
+from PyQt5.QtCore import *
+from PyQt5.QtWidgets import *
+from PyQt5.QtGui import *
+
+
 sys.tracebacklimit = 1
+
+try:
+    from PyQt5 import QtCore
+except ImportError as err:
+    print('Unable to import PyQt5, please download the package')
+    print('NOTE: On uio? You can use \'pip install --user fpdf\' '
+          'to install without locally without the need of Sudo')
+    raise err
 
 try:
     from fpdf import FPDF
@@ -604,8 +617,6 @@ class Penger:
         self.parse_config()
         self.parse_timesheet()
 
-        if not self.args.s:
-            gui = ManagerGui()
 
         self.generate_PDF()
         self.extra_actions()
@@ -687,11 +698,46 @@ Optional arguments for both:
 '''
 
 
-class ManagerGui:
-    def __init__(self):
-        # TODO: Actually implement this module. going to use PyQt
-        raise NotImplementedError
+class ManagerGui(QMainWindow):
+    # http://zetcode.com/gui/pyqt5
+    # Guide
 
+    def __init__(self,penger):
+        self.penger = penger
+        super().__init__()
+        self.init_ui()
+
+    def init_ui(self):
+
+        # Windowstuff
+        self.setGeometry(300, 300, 350, 250)
+        self.setWindowTitle('{0} - by Nikolasp'.format(penger.config['month name']))
+
+
+        # Toolbarstuff
+
+        ## Actions
+        exitAction = QAction(QIcon('exit.png'), '&Exit', self)
+        exitAction.setShortcut('Ctrl+Q')
+        exitAction.setStatusTip('Exit application')
+        exitAction.triggered.connect(app.quit)
+
+        ## Menubar
+        menubar = self.menuBar()
+        fileMenu = menubar.addMenu('&File')
+        fileMenu.addAction(exitAction)
+
+        self.statusBar()
+
+        # Finalizing
+        self.show()
 
 if __name__ == '__main__':
+    app = QApplication(sys.argv)
     penger = Penger()
+
+    if penger.args.s:
+        exit(0)
+
+    gui = ManagerGui(penger)
+    sys.exit(app.exec_())
