@@ -7,17 +7,21 @@ import shlex
 import sys
 from urllib import request
 from datetime import datetime, timedelta
+import calendar
 from subprocess import Popen, PIPE
 import getpass
 import socket
 import tempfile
 
+
+
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
+from PyQt5 import QtCore, QtGui, QtWidgets
 
 
-sys.tracebacklimit = 1
+sys.tracebacklimit = 10
 
 try:
     from PyQt5 import QtCore
@@ -245,26 +249,35 @@ class Penger:
 
     def parse_timesheet(self):
 
+        # http://stackoverflow.com/questions/42950/get-last-day-of-the-month-in-python
         date_today = datetime.today()
 
         # noinspection PyShadowingNames
         def date_range():
             if self.args.y and self.args.m:
                 date_start = datetime(self.args.y, self.args.m, 1)
-                date_end = datetime(self.args.y, self.args.m + 1, 1)
-                date_end = date_end - timedelta(seconds=1)
+
+                end_day = calendar.monthrange(self.args.y, self.args.m)[1]
+                date_end = datetime(self.args.y, self.args.m, 1)
+                date_end = date_end + timedelta(days=end_day+1) - timedelta(seconds=1)
             elif self.args.m:
                 date_start = datetime(date_today.year, self.args.m, 1)
+
+                end_day = calendar.monthrange(date_today.year, self.args.m)[1]
                 date_end = datetime(date_start.year, self.args.m + 1, 1)
-                date_end = date_end - timedelta(seconds=1)
+                date_end = date_end + timedelta(days=end_day + 1) - timedelta(seconds=1)
             elif self.args.y:
                 date_start = datetime(self.args.y, 1, 1)
+                end_day = calendar.monthrange(self.args.y, date_today.month)[1]
+
                 date_end = datetime(self.args.y + 1, 1, 1)
-                date_end = date_end - timedelta(seconds=1)
+                date_end = date_end + timedelta(days=end_day + 1) - timedelta(seconds=1)
             else:
                 date_start = datetime(date_today.year, date_today.month, 1)
+
+                end_day = calendar.monthrange(date_today.year, date_today.month)[1]
                 date_end = datetime(date_today.year, date_today.month + 1, 1)
-                date_end = date_end - timedelta(seconds=1)
+                date_end = date_end + timedelta(days=end_day+1) - timedelta(seconds=1)
 
             self.config['month name'] = date_start.strftime('%B - %Y')
             return date_start, date_end
@@ -617,10 +630,10 @@ class Penger:
         self.parse_config()
         self.parse_timesheet()
 
-
-        self.generate_PDF()
-        self.extra_actions()
-        self.summation()
+        if self.args.s:
+            self.generate_PDF()
+            self.extra_actions()
+            self.summation()
 
 
 date_str_formats = ['%Y-%m-%d', '%y%m', '%y%m%d']
@@ -702,32 +715,78 @@ class ManagerGui(QMainWindow):
     # http://zetcode.com/gui/pyqt5
     # Guide
 
+    def time_sheet_selector(self):
+        file_path = QFileDialog(self).getOpenFileName()
+        print(file_path)
+        return file_path
+
+    def time_sheet_selector(self):
+        file_path = QFileDialog(self).getOpenFileName()
+        print(file_path)
+        return file_path
+
     def __init__(self,penger):
         self.penger = penger
         super().__init__()
-        self.init_ui()
+        self.init_ui(self)
 
-    def init_ui(self):
+    def init_ui(self, MainWindow):
+        MainWindow.setObjectName("MainWindow")
+        MainWindow.resize(800, 600)
+        self.centralwidget = QtWidgets.QWidget(MainWindow)
+        self.centralwidget.setObjectName("centralwidget")
+        self.treeWidget = QtWidgets.QTreeWidget(self.centralwidget)
+        self.treeWidget.setEnabled(True)
+        self.treeWidget.setGeometry(QtCore.QRect(0, 0, 791, 571))
+        self.treeWidget.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.treeWidget.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustToContents)
+        self.treeWidget.setColumnCount(4)
+        self.treeWidget.setObjectName("treeWidget")
+        self.treeWidget.header().setHighlightSections(True)
+        self.treeWidget.header().setMinimumSectionSize(37)
+        self.treeWidget.header().setSortIndicatorShown(False)
+        MainWindow.setCentralWidget(self.centralwidget)
+        self.toolBar = QtWidgets.QToolBar(MainWindow)
+        self.toolBar.setAllowedAreas(QtCore.Qt.NoToolBarArea)
+        self.toolBar.setFloatable(False)
+        self.toolBar.setObjectName("toolBar")
+        MainWindow.addToolBar(QtCore.Qt.TopToolBarArea, self.toolBar)
+        self.action_file_open_sheet = QtWidgets.QAction(MainWindow)
+        self.action_file_open_sheet.setObjectName("action_file_open_sheet")
+        self.action_file_open_config = QtWidgets.QAction(MainWindow)
+        self.action_file_open_config.setObjectName("action_file_open_config")
+        self.action_exit = QtWidgets.QAction(MainWindow)
+        self.action_exit.setObjectName("action_exit")
+        self.action_generate_PDF = QtWidgets.QAction(MainWindow)
+        self.action_generate_PDF.setObjectName("action_generate_PDF")
+        self.toolBar.addAction(self.action_file_open_sheet)
+        self.toolBar.addAction(self.action_file_open_config)
+        self.toolBar.addAction(self.action_generate_PDF)
+        self.toolBar.addAction(self.action_exit)
 
-        # Windowstuff
-        self.setGeometry(300, 300, 350, 250)
-        self.setWindowTitle('{0} - by Nikolasp'.format(penger.config['month name']))
+        self.retranslateUi(MainWindow)
+        self.action_exit.triggered.connect(MainWindow.close)
+        QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
-
-        # Toolbarstuff
-
-        ## Actions
-        exitAction = QAction(QIcon('exit.png'), '&Exit', self)
-        exitAction.setShortcut('Ctrl+Q')
-        exitAction.setStatusTip('Exit application')
-        exitAction.triggered.connect(app.quit)
-
-        ## Menubar
-        menubar = self.menuBar()
-        fileMenu = menubar.addMenu('&File')
-        fileMenu.addAction(exitAction)
-
-        self.statusBar()
+    def retranslateUi(self, MainWindow):
+        _translate = QtCore.QCoreApplication.translate
+        MainWindow.setWindowTitle(_translate("MainWindow", "Time sheet generator -- Nikolasp"))
+        self.treeWidget.headerItem().setText(0, _translate("MainWindow", "Date"))
+        self.treeWidget.headerItem().setText(1, _translate("MainWindow", "Time"))
+        self.treeWidget.headerItem().setText(2, _translate("MainWindow", "Category"))
+        self.treeWidget.headerItem().setText(3, _translate("MainWindow", "Comment"))
+        self.toolBar.setWindowTitle(_translate("MainWindow", "toolBar"))
+        self.action_file_open_sheet.setText(_translate("MainWindow", "Open sheet"))
+        self.action_file_open_sheet.setToolTip(_translate("MainWindow", "Open the time sheet"))
+        self.action_file_open_sheet.setShortcut(_translate("MainWindow", "Ctrl+O"))
+        self.action_file_open_config.setText(_translate("MainWindow", "Open config"))
+        self.action_file_open_config.setToolTip(_translate("MainWindow", "Open the config file"))
+        self.action_file_open_config.setShortcut(_translate("MainWindow", "Ctrl+C"))
+        self.action_exit.setText(_translate("MainWindow", "Exit"))
+        self.action_exit.setShortcut(_translate("MainWindow", "Ctrl+Q"))
+        self.action_generate_PDF.setText(_translate("MainWindow", "Generate PDF"))
+        self.action_generate_PDF.setToolTip(_translate("MainWindow", "Push to save the pdf"))
+        self.action_generate_PDF.setShortcut(_translate("MainWindow", "Ctrl+S"))
 
         # Finalizing
         self.show()
