@@ -106,7 +106,8 @@ class Penger:
         parser.add_argument('-o', metavar='--output', type=str, default=None, help="name of the PDF file")
         parser.add_argument('-c', metavar='--config', type=str, default=".timerc",
                             help="Specify a config file. Use this if you for example got multiple jobs")
-        parser.add_argument('-s', metavar='--silent', type=bool, default=False, help="Used to generate")
+        parser.add_argument('-s', '--silent',action='store_true', default=False,
+                            help="Used to generate the pdfs without the GUI")
         self.args = parser.parse_args()
 
     def parse_config(self):
@@ -259,25 +260,25 @@ class Penger:
 
                 end_day = calendar.monthrange(self.args.y, self.args.m)[1]
                 date_end = datetime(self.args.y, self.args.m, 1)
-                date_end = date_end + timedelta(days=end_day+1) - timedelta(seconds=1)
+                date_end = date_end + timedelta(days=end_day) - timedelta(seconds=1)
             elif self.args.m:
                 date_start = datetime(date_today.year, self.args.m, 1)
 
                 end_day = calendar.monthrange(date_today.year, self.args.m)[1]
                 date_end = datetime(date_start.year, self.args.m + 1, 1)
-                date_end = date_end + timedelta(days=end_day + 1) - timedelta(seconds=1)
+                date_end = date_end + timedelta(days=end_day) - timedelta(seconds=1)
             elif self.args.y:
                 date_start = datetime(self.args.y, 1, 1)
                 end_day = calendar.monthrange(self.args.y, date_today.month)[1]
 
                 date_end = datetime(self.args.y + 1, 1, 1)
-                date_end = date_end + timedelta(days=end_day + 1) - timedelta(seconds=1)
+                date_end = date_end + timedelta(days=end_day) - timedelta(seconds=1)
             else:
                 date_start = datetime(date_today.year, date_today.month, 1)
 
                 end_day = calendar.monthrange(date_today.year, date_today.month)[1]
                 date_end = datetime(date_today.year, date_today.month + 1, 1)
-                date_end = date_end + timedelta(days=end_day+1) - timedelta(seconds=1)
+                date_end = date_end + timedelta(days=end_day) - timedelta(seconds=1)
 
             self.config['month name'] = date_start.strftime('%B - %Y')
             return date_start, date_end
@@ -630,7 +631,7 @@ class Penger:
         self.parse_config()
         self.parse_timesheet()
 
-        if self.args.s:
+        if self.args.silent:
             self.generate_PDF()
             self.extra_actions()
             self.summation()
@@ -795,7 +796,7 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     penger = Penger()
 
-    if penger.args.s:
+    if penger.args.silent:
         exit(0)
 
     gui = ManagerGui(penger)
