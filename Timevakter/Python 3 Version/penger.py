@@ -5,23 +5,39 @@ import os
 import re
 import shlex
 import sys
-import urllib2
-import calendar
+from urllib import request
 from datetime import datetime, timedelta
+import calendar
 from subprocess import Popen, PIPE
 import getpass
 import socket
 import tempfile
 
-sys.tracebacklimit = 1
+
+
+from PyQt5.QtCore import *
+from PyQt5.QtWidgets import *
+from PyQt5.QtGui import *
+from PyQt5 import QtCore, QtGui, QtWidgets
+
+
+sys.tracebacklimit = 10
+
+try:
+    from PyQt5 import QtCore
+except ImportError as err:
+    print('Unable to import PyQt5, please download the package')
+    print('NOTE: On uio? You can use \'pip install --user fpdf\' '
+          'to install without locally without the need of Sudo')
+    raise err
 
 try:
     from fpdf import FPDF
 except ImportError as err:
     FPDF = None
-    print 'Unable to import fpdf, please download the package'
-    print 'NOTE: On uio? You can use \'pip install --user fpdf\' ' \
-          'to install without locally without the need of Sudo'
+    print('Unable to import fpdf, please download the package')
+    print('NOTE: On uio? You can use \'pip install --user fpdf\' '
+          'to install without locally without the need of Sudo')
     raise err
 
 # NOTE: This is manually updated by Nikolasp, yell at him if he has forgotten to update the table
@@ -42,7 +58,7 @@ class DateError(Exception):
 class PDF(FPDF):
     def header(self):
         # Logo
-        logo = urllib2.urlopen(uio_logo_url).read()
+        logo = request.urlopen(uio_logo_url).read()
         temp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
         temp.write(logo)
         temp.close()
@@ -57,16 +73,19 @@ class Penger:
     def get_hourly_rate(self):
         grade = self.config['pay grade']
 
-        connection = urllib2.urlopen(pay_grade_table).read().replace(',', '.')
-        lines = connection.split('\n')
+        connection = request.urlopen(pay_grade_table)
+        content = connection.read().decode("utf-8")
+
+        content = content.replace(',', '.')
+        lines = content.split('\n')
 
         if grade < 19:
-            print "Your pay grade is lower than what UiO generally allows... Somethings is wrong here"
+            print("Your pay grade is lower than what UiO generally allows... Somethings is wrong here")
             self.config['rate'] = 0
             return self.config['rate']
 
         if grade > 101:
-            print "Dude, you are making waaay too much money (pay grade stops at 101)"
+            print("Dude, you are making too much money (pay grade stops at 101)")
             self.config['rate'] = 0
             return self.config['rate']
 
@@ -87,15 +106,17 @@ class Penger:
         parser.add_argument('-o', metavar='--output', type=str, default=None, help="name of the PDF file")
         parser.add_argument('-c', metavar='--config', type=str, default=".timerc",
                             help="Specify a config file. Use this if you for example got multiple jobs")
+        parser.add_argument('-s', '--gui',action='store_true', default=False,
+                            help="Show the GUI (WIP)")
         self.args = parser.parse_args()
 
     def parse_config(self):
 
         if not os.path.exists(self.args.c):
-            print "NOTE: Was unable to find your time config file, so made a new one at {0}" \
-                .format(os.path.abspath(self.args.c))
+            print("NOTE: Was unable to find your time config file, so made a new one at {0}"
+                  .format(os.path.abspath(self.args.c)))
 
-            example = urllib2.urlopen(timerc_example_url).read()
+            example = request.urlopen(timerc_example_url).read()
             config = open(self.args.c, 'w')
             config.write(example)
             config.close()
@@ -104,22 +125,22 @@ class Penger:
             config = open(self.args.c, 'r')
             config_str = config.read()
 
-            re_config = re.compile(ur'(.*?):\s+([_\\~./0-9a-zA-Z -]*)(#.*$|$)', re.MULTILINE)
+            re_config = re.compile('(.*?):\s+([_\\~./0-9a-zA-Z -]*)(#.*$|$)', re.MULTILINE)
 
             config_res = re.findall(re_config, config_str)
 
             for pair in config_res:
                 self.config[pair[0]] = pair[1].strip()
 
-            non_ta_set = set({'name', 'timesheet', 'pnr', 'position', 'place', 'pay grade'})
-            ta_set = set({'name', 'subject code', 'timesheet', 'birth date'})
+            non_ta_set = {'name', 'timesheet', 'pnr', 'position', 'place', 'pay grade'}
+            ta_set = {'name', 'subject code', 'timesheet', 'birth date'}
 
             non_ta_set = set(non_ta_set) - set(self.config.keys())
             ta_set = set(ta_set) - set(self.config.keys())
 
             if len(non_ta_set) == 0 and len(ta_set) == 0:
-                print "[!] Unable to discern if this is a file for a TA or a non-TA config"
-                print "[!] Note: TA does not need to list position"
+                print("[!] Unable to discern if this is a file for a TA or a non-TA config")
+                print("[!] Note: TA does not need to list position")
                 exit(1)
 
             if len(non_ta_set) == 0:
@@ -128,16 +149,17 @@ class Penger:
                 self.config['extended'] = True
                 self.config['position'] = 'Teaching assistant'
             else:
-                print "Error with the keys in the config file."
-                print "Has found: {0}\nMissing the following key(s) for non-TA: {1}\nMissing the following key(s) for TA: {2}\n" \
-                    .format(', '.join(self.config.keys()), ', '.join(non_ta_set), ', '.join(ta_set))
-                print timerc_example
+                print("Error with the keys in the config file.")
+                print(
+                    "Has found: {0}\nMissing the key(s) for non-TA: {1}\nMissing the key(s) for TA: {2}\n"
+                    .format(', '.join(self.config.keys()), ', '.join(non_ta_set), ', '.join(ta_set)))
+                print(timerc_example)
                 exit(1)
 
             self.config['tax percentage'] = float(self.config.setdefault('tax percentage', 0))
             self.config['pay grade'] = int(self.config.setdefault('pay grade', 0))
         except IOError:
-            print "Unable to find a .timerc file, creating an example file for you"
+            print("Unable to find a .timerc file, creating an example file for you")
 
     def parse_activity(self, activity_str, time_sum):
         activity_str = activity_str.strip().lower()
@@ -168,7 +190,7 @@ class Penger:
             #               1: Oblig num
             #               2: Try number?
             #               3: Number of obligs
-            # Saves the trynum and Number of Obligs in a key named after the oblig num
+            # Saves the try num and Number of Obligs in a key named after the oblig num
 
             key = '{0}:{1}'.format(oblig_lst[1], oblig_lst[2])
             tmp = self.oblig.get(key, [0, 0])
@@ -204,7 +226,7 @@ class Penger:
         return False
 
     def get_hours(self, hour_str):
-        p = re.compile(ur':(.*)$', re.MULTILINE)
+        p = re.compile(':(.*)$', re.MULTILINE)
 
         time_res = re.search(p, hour_str)
         time_str_org = str(time_res.groups(0)[0]).strip()
@@ -217,17 +239,18 @@ class Penger:
             time_from, time_to = self.parse_hours(time_str[0]), self.parse_hours(time_str[1])
 
             if time_from is False or time_to is False:
-                print "Error parsing the following timerange: '{0}'".format(time_str_org)
+                print("Error parsing the following time range: '{0}'".format(time_str_org))
                 exit(1)
 
             time_delta = time_to - time_from
-            # Using this janky shit of an formula since UiO has an outdated timedate (total_sec is not implmented)
+            # Using this horrible shit of an formula since UiO has an outdated timedate (total_sec is not implemented)
             hour_sum = time_delta.days * 24.0 + time_delta.seconds / 3600.0
 
         return hour_sum, time_from, time_to
 
     def parse_timesheet(self):
 
+        # http://stackoverflow.com/questions/42950/get-last-day-of-the-month-in-python
         date_today = datetime.today()
 
         # noinspection PyShadowingNames
@@ -237,25 +260,25 @@ class Penger:
 
                 end_day = calendar.monthrange(self.args.y, self.args.m)[1]
                 date_end = datetime(self.args.y, self.args.m, 1)
-                date_end = date_end + timedelta(days=end_day + 1) - timedelta(seconds=1)
+                date_end = date_end + timedelta(days=end_day) - timedelta(seconds=1)
             elif self.args.m:
                 date_start = datetime(date_today.year, self.args.m, 1)
 
                 end_day = calendar.monthrange(date_today.year, self.args.m)[1]
                 date_end = datetime(date_start.year, self.args.m + 1, 1)
-                date_end = date_end + timedelta(days=end_day + 1) - timedelta(seconds=1)
+                date_end = date_end + timedelta(days=end_day) - timedelta(seconds=1)
             elif self.args.y:
                 date_start = datetime(self.args.y, 1, 1)
                 end_day = calendar.monthrange(self.args.y, date_today.month)[1]
 
                 date_end = datetime(self.args.y + 1, 1, 1)
-                date_end = date_end + timedelta(days=end_day + 1) - timedelta(seconds=1)
+                date_end = date_end + timedelta(days=end_day) - timedelta(seconds=1)
             else:
                 date_start = datetime(date_today.year, date_today.month, 1)
 
                 end_day = calendar.monthrange(date_today.year, date_today.month)[1]
                 date_end = datetime(date_today.year, date_today.month + 1, 1)
-                date_end = date_end + timedelta(days=end_day + 1) - timedelta(seconds=1)
+                date_end = date_end + timedelta(days=end_day) - timedelta(seconds=1)
 
             self.config['month name'] = date_start.strftime('%B - %Y')
             return date_start, date_end
@@ -266,11 +289,11 @@ class Penger:
             sheet = open(path, 'r')
             sheet_data = sheet.read()
         except IOError:
-            print "Unable to open {0}, check your .timerc file or the rights on the timesheet" \
-                .format(self.config['timesheet'])
+            print("Unable to open {0}, check your .timerc file or the rights on the timesheet"
+                  .format(self.config['timesheet']))
             exit(1)
 
-        re_sheet = re.compile(ur'(^[0-9- :.,]+)([ a-zA-Z0-9:]+)?(#[ \S]*$)?', re.MULTILINE)
+        re_sheet = re.compile('(^[0-9- :.,]+)([ a-zA-Z0-9:]+)?(#[ \S]*$)?', re.MULTILINE)
 
         sheet_data = re.findall(re_sheet, sheet_data)
 
@@ -281,66 +304,67 @@ class Penger:
             parsed_date = self.parse_date(entry_date)
 
             if parsed_date is False:
-                print r"Error parsing the following date: {0}\nCheck your timesheet".format(entry)
+                print(r"Error parsing the following date: {0}\nCheck your timesheet".format(entry))
                 exit(1)
 
             if date_start <= parsed_date <= date_end:
-                self.filtered_entires.append(entry)
+                self.filtered_entries.append(entry)
 
     def extra_actions(self):  # This is the part that manages printing and mailing users
         if self.args.e:
 
             if "uio.no" not in socket.getfqdn():
-                print "Note: found something other than the uio.no domain, mail might not work"
+                print("Note: found something other than the uio.no domain, mail might not work")
 
-            addr_to = self.args.e
-            subject = '[Timescript] on behalf of ' + getpass.getuser()
+            address_to = self.args.e
+            attachment = os.path.abspath(self.config['output name'])
+            subject = '[Timescript] {0} on behalf of {1}'.format(self.config['output name'], getpass.getuser())
             smtp = 'smtp.uio.no'
-            atta = os.path.abspath(self.config['output name'])
 
             # Run the powershell mail command here
-            print "Note, mail command might take some time"
+            print("Note, mail command might take some time")
 
             if 'nt' in os.name:  # Windows systems
                 args = shlex.split(
                     r'powershell.exe -NoProfile Send-MailMessage '
                     r'-To {0} -From {0} -Subject {1} -SmtpServer {2} -Attachments "{3}"'.format(
-                        addr_to, subject, smtp, atta))
+                        address_to, subject, smtp, attachment))
 
                 try:
                     Popen(args=args, shell=True, stdin=PIPE, stdout=PIPE)
                 except OSError:
-                    print "Unable to find powershell... what on earth are you running?\nUse a UiO machine"
+                    print("Unable to find powershell... what on earth are you running?\nUse a UiO machine")
 
-            elif 'posix' in os.name:  # Nix systems
-                args = shlex.split(r'mailx -a {0} -s "{1}" {2}'.format(atta, subject, addr_to))
+            elif 'posix' in os.name:  # Unix systems
+                args = shlex.split(r'mailx -a {0} -s "{1}" {2}'.format(attachment, subject, address_to))
                 try:
                     Popen(args=args, shell=False, stdin=PIPE, stdout=PIPE)
                 except OSError:
-                    print "Unable to find the mailx command, this should only be used on a UiO machine due to filtering"
+                    print(
+                        "Unable to find the mailx command, this should only be used on a UiO machine due to filtering")
 
             else:
-                print "No clue what the given OS is"
+                print("No clue what the given OS is")
 
         if self.args.p:
             if 'nt' in os.name:
                 # There got to be a cleaner way to do this :C
-                print "Note, might take some time to setup the printer you want"
+                print("Note, might take some time to setup the printer you want")
                 args = shlex.split(
-                    r'powershell.exe (New-Object -ComObject WScript.Network).AddWindowsPrinterConnection("\\pushprint.uio.no\{0}")'.format(
-                        self.args.p), posix=False)
+                    r'powershell.exe (New-Object -ComObject WScript.Network).AddWindowsPrinterConnection("\\pushprint.uio.no\{0}")'
+                    .format(self.args.p), posix=False)
                 shell = Popen(args=args, shell=True, stdin=PIPE, stdout=PIPE)
-                print shell.communicate()
+                print(shell.communicate())
                 args = shlex.split(
-                    r'powershell.exe (New-Object -ComObject WScript.Network).SetDefaultPrinter("\\pushprint.uio.no\{0}")'.format(
-                        self.args.p), posix=False)
+                    r'powershell.exe (New-Object -ComObject WScript.Network).SetDefaultPrinter("\\pushprint.uio.no\{0}")'
+                    .format(self.args.p), posix=False)
                 shell = Popen(args=args, shell=True, stdin=PIPE, stdout=PIPE)
-                print shell.communicate()
+                print(shell.communicate())
                 args = shlex.split(r'powershell.exe Start-Process -FilePath {0} -Verb Print'.format(
                     os.path.abspath(self.config['output name'])), posix=False)
-                print args
+                print(args)
                 shell = Popen(args=args, shell=True, stdin=PIPE, stdout=PIPE)
-                print shell.communicate()
+                print(shell.communicate())
 
             elif 'posix' in os.name:
                 args = shlex.split(
@@ -348,7 +372,7 @@ class Penger:
                 try:
                     Popen(args=args, shell=False, stdin=PIPE, stdout=PIPE)
                 except OSError:
-                    print "Unable to find the pushprint command, are you on a UiO machine?"
+                    print("Unable to find the pushprint command, are you on a UiO machine?")
 
     # noinspection PyPep8Naming
     def generate_PDF(self):
@@ -356,10 +380,15 @@ class Penger:
         pdf.add_page()
 
         pdf.set_font('Arial')
-        pdf.multi_cell(w=200, h=8, txt="Name: {0}\nPosistion: {1}\nPay grade: {2}\nPlace of work: {3}\nSSN: {4}"
-                       .format(self.config['name'], self.config['position'], self.config['pay grade'],
-                               self.config['place'],
-                               self.config['pnr']), align='L')
+
+        if self.config['extended']:
+            pdf.multi_cell(w=200, h=8, txt="Name: {0}\nPosition: {1}\n"
+                           .format(self.config['name'], self.config['position'], align='L'))
+        else:
+            pdf.multi_cell(w=200, h=8, txt="Name: {0}\nPosition: {1}\nPay grade: {2}\nPlace of work: {3}\nSSN: {4}"
+                           .format(self.config['name'], self.config['position'], self.config['pay grade'],
+                                   self.config['place'],
+                                   self.config['pnr']), align='L')
 
         pdf.ln(10)
         # Done creating info and top text
@@ -387,9 +416,8 @@ class Penger:
         # Done creating top row
         pdf.set_font('Arial', size=12, style='b')
 
-
-        #Actually figuring out how many hours and such here
-        for entry in self.filtered_entires:
+        # Actually figuring out how many hours and such here
+        for entry in self.filtered_entries:
             entry_date = entry[0].split(':')
             datetime_obj = self.parse_date(entry_date[0])
             datetime_str = datetime_obj.strftime('%Y-%m-%d')
@@ -405,7 +433,7 @@ class Penger:
                 time_to = time_to.strftime('%H:%M')
 
             note = str(entry[2])
-            note = note[1:].strip().decode('UTF-8')
+            note = note[1:].strip()
 
             if self.config.get('extended') is True:
                 ret = self.parse_activity(entry[1], time_sum)
@@ -413,8 +441,6 @@ class Penger:
 
             note = note.strip()
             self.sum_hour += time_sum
-
-
 
             note_height = cell_height
 
@@ -456,12 +482,11 @@ class Penger:
         if self.args.o:
             file_name = self.args.o
 
-
         try:
             pdf.output(file_name)
         except IOError as e:
-            print "Could not write to {0}".format(file_name)
-            print "Is the PDF open in a reader?"
+            print("Could not write to {0}".format(file_name))
+            print("Is the PDF open in a reader?")
             exit(1)
 
         self.config['output name'] = file_name
@@ -477,7 +502,7 @@ class Penger:
         page_width = pdf.w - pdf.l_margin - pdf.r_margin  # Size of actual page area
         # Information about the TA
         info_width = page_width / 3
-        info_heigth = 15
+        info_height = 15
 
         # 1st line
         pdf.set_font('Arial', size=8)
@@ -488,9 +513,9 @@ class Penger:
         pdf.set_xy(x, y)
 
         pdf.set_font('Arial', size=14, style='B')
-        pdf.cell(info_width, info_heigth, align='C', border=1, txt=first_name)
-        pdf.cell(info_width, info_heigth, align='C', border=1, txt=self.config['subject code'])
-        pdf.cell(info_width, info_heigth, align='C', border=1, txt=birth_date, ln=1)
+        pdf.cell(info_width, info_height, align='C', border=1, txt=first_name)
+        pdf.cell(info_width, info_height, align='C', border=1, txt=self.config['subject code'])
+        pdf.cell(info_width, info_height, align='C', border=1, txt=birth_date, ln=1)
 
         # 2nd line
         pdf.set_font('Arial', size=8)
@@ -501,18 +526,18 @@ class Penger:
         pdf.set_xy(x, y)
 
         pdf.set_font('Arial', size=14, style='B')
-        pdf.cell(info_width, info_heigth, align='C', border=1, txt=last_name)
-        pdf.cell(info_width, info_heigth, align='C', border=1, txt=self.config['month name'])
-        pdf.cell(info_width, info_heigth, align='C', border=1, txt=str(self.sum_hour), ln=1)
+        pdf.cell(info_width, info_height, align='C', border=1, txt=last_name)
+        pdf.cell(info_width, info_height, align='C', border=1, txt=self.config['month name'])
+        pdf.cell(info_width, info_height, align='C', border=1, txt=str(self.sum_hour), ln=1)
         pdf.ln(10)
 
         # Done with 2nd Line
 
         # Specification of the hours
 
-        pdf.cell(pdf.w / 2, info_heigth / 2, txt='Specification of hours', ln=1)
+        pdf.cell(pdf.w / 2, info_height / 2, txt='Specification of hours', ln=1)
         pdf.set_font('Arial', size=14)
-        pdf.cell(pdf.w, info_heigth / 2, txt='(Doubleclass of lecturing = 2 hours, or rounded to nearest quarter hour)',
+        pdf.cell(pdf.w, info_height / 2, txt='(Class of lecturing = 2 hours, or rounded to nearest quarter hour)',
                  ln=1)
         pdf.set_font('Arial', size=14, style='B')
 
@@ -540,7 +565,7 @@ class Penger:
         pdf.cell(hour_w, hour_h, border=1, txt='Communication outside class')
         pdf.cell(hour_w, hour_h, border=1, ln=1, txt=str(self.hours.get('com', 0)))
 
-        pdf.cell(hour_w, hour_h, border=1, txt='Other (See worklog for reference)')
+        pdf.cell(hour_w, hour_h, border=1, txt='Other (See work log for reference)')
         pdf.cell(hour_w, hour_h, border=1, ln=1, txt=str(self.hours.get('other', 0)))
 
         pdf.ln(10)
@@ -592,23 +617,24 @@ class Penger:
         tax_rate = self.config['tax percentage']
         tax = hourly_rate * self.sum_hour * tax_rate / 100
         income = hourly_rate * self.sum_hour - tax
-        print summation.format(self.config['pay grade'], hourly_rate, self.sum_hour, hourly_rate * self.sum_hour,
-                               tax_rate, tax, income)
+        print(summation.format(self.config['pay grade'], hourly_rate, self.sum_hour, hourly_rate * self.sum_hour,
+                               tax_rate, tax, income))
 
     def __init__(self):
         self.config = {}
         self.hours = {}
         self.oblig = {}
         self.args = None
-        self.filtered_entires = []
+        self.filtered_entries = []
         self.sum_hour = 0
-
         self.parse_commands()
         self.parse_config()
         self.parse_timesheet()
-        self.generate_PDF()
-        self.extra_actions()
-        self.summation()
+
+        if self.args.gui:
+            self.generate_PDF()
+            self.extra_actions()
+            self.summation()
 
 
 date_str_formats = ['%Y-%m-%d', '%y%m', '%y%m%d']
@@ -669,14 +695,14 @@ NOTE: All the formatting from above works. The only field that is really differe
 
 timerc_example = r'''
 The following things is needed be in the .timerc for non teaching assistants:
-    name:           Namey McName
+    name:           Name McName
     timesheet:      ~/timer.txt          # placement of your timesheet
     pnr:            12345123450          # leave blank if you do not wish this to be added
     position:       Guardian of Time     # name of your position
     place:          IFI                  # place of work
 
 The following things is needed be in the .timerc for teaching assistants:
-    name:           Namey McName
+    name:           Name McName
     subject code:   INF2100              # Subject code
     timesheet:      ~/timer.txt          # placement of your timesheet
 
@@ -685,5 +711,93 @@ Optional arguments for both:
     pay grade:      0                    # what pay grade you got
 '''
 
+
+class ManagerGui(QMainWindow):
+    # http://zetcode.com/gui/pyqt5
+    # Guide
+
+    def time_sheet_selector(self):
+        file_path = QFileDialog(self).getOpenFileName()
+        print(file_path)
+        return file_path
+
+    def time_sheet_selector(self):
+        file_path = QFileDialog(self).getOpenFileName()
+        print(file_path)
+        return file_path
+
+    def __init__(self,penger):
+        self.penger = penger
+        super().__init__()
+        self.init_ui(self)
+
+    def init_ui(self, MainWindow):
+        MainWindow.setObjectName("MainWindow")
+        MainWindow.resize(800, 600)
+        self.centralwidget = QtWidgets.QWidget(MainWindow)
+        self.centralwidget.setObjectName("centralwidget")
+        self.treeWidget = QtWidgets.QTreeWidget(self.centralwidget)
+        self.treeWidget.setEnabled(True)
+        self.treeWidget.setGeometry(QtCore.QRect(0, 0, 791, 571))
+        self.treeWidget.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.treeWidget.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustToContents)
+        self.treeWidget.setColumnCount(4)
+        self.treeWidget.setObjectName("treeWidget")
+        self.treeWidget.header().setHighlightSections(True)
+        self.treeWidget.header().setMinimumSectionSize(37)
+        self.treeWidget.header().setSortIndicatorShown(False)
+        MainWindow.setCentralWidget(self.centralwidget)
+        self.toolBar = QtWidgets.QToolBar(MainWindow)
+        self.toolBar.setAllowedAreas(QtCore.Qt.NoToolBarArea)
+        self.toolBar.setFloatable(False)
+        self.toolBar.setObjectName("toolBar")
+        MainWindow.addToolBar(QtCore.Qt.TopToolBarArea, self.toolBar)
+        self.action_file_open_sheet = QtWidgets.QAction(MainWindow)
+        self.action_file_open_sheet.setObjectName("action_file_open_sheet")
+        self.action_file_open_config = QtWidgets.QAction(MainWindow)
+        self.action_file_open_config.setObjectName("action_file_open_config")
+        self.action_exit = QtWidgets.QAction(MainWindow)
+        self.action_exit.setObjectName("action_exit")
+        self.action_generate_PDF = QtWidgets.QAction(MainWindow)
+        self.action_generate_PDF.setObjectName("action_generate_PDF")
+        self.toolBar.addAction(self.action_file_open_sheet)
+        self.toolBar.addAction(self.action_file_open_config)
+        self.toolBar.addAction(self.action_generate_PDF)
+        self.toolBar.addAction(self.action_exit)
+
+        self.retranslateUi(MainWindow)
+        self.action_exit.triggered.connect(MainWindow.close)
+        QtCore.QMetaObject.connectSlotsByName(MainWindow)
+
+    def retranslateUi(self, MainWindow):
+        _translate = QtCore.QCoreApplication.translate
+        MainWindow.setWindowTitle(_translate("MainWindow", "Time sheet generator -- Nikolasp"))
+        self.treeWidget.headerItem().setText(0, _translate("MainWindow", "Date"))
+        self.treeWidget.headerItem().setText(1, _translate("MainWindow", "Time"))
+        self.treeWidget.headerItem().setText(2, _translate("MainWindow", "Category"))
+        self.treeWidget.headerItem().setText(3, _translate("MainWindow", "Comment"))
+        self.toolBar.setWindowTitle(_translate("MainWindow", "toolBar"))
+        self.action_file_open_sheet.setText(_translate("MainWindow", "Open sheet"))
+        self.action_file_open_sheet.setToolTip(_translate("MainWindow", "Open the time sheet"))
+        self.action_file_open_sheet.setShortcut(_translate("MainWindow", "Ctrl+O"))
+        self.action_file_open_config.setText(_translate("MainWindow", "Open config"))
+        self.action_file_open_config.setToolTip(_translate("MainWindow", "Open the config file"))
+        self.action_file_open_config.setShortcut(_translate("MainWindow", "Ctrl+C"))
+        self.action_exit.setText(_translate("MainWindow", "Exit"))
+        self.action_exit.setShortcut(_translate("MainWindow", "Ctrl+Q"))
+        self.action_generate_PDF.setText(_translate("MainWindow", "Generate PDF"))
+        self.action_generate_PDF.setToolTip(_translate("MainWindow", "Push to save the pdf"))
+        self.action_generate_PDF.setShortcut(_translate("MainWindow", "Ctrl+S"))
+
+        # Finalizing
+        self.show()
+
 if __name__ == '__main__':
+    app = QApplication(sys.argv)
     penger = Penger()
+
+    if penger.args.gui:
+        exit(0)
+
+    gui = ManagerGui(penger)
+    sys.exit(app.exec_())
