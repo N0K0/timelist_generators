@@ -106,8 +106,8 @@ class Penger:
         parser.add_argument('-o', metavar='--output', type=str, default=None, help="name of the PDF file")
         parser.add_argument('-c', metavar='--config', type=str, default=".timerc",
                             help="Specify a config file. Use this if you for example got multiple jobs")
-        parser.add_argument('-s', '--silent',action='store_true', default=False,
-                            help="Used to generate the pdfs without the GUI")
+        parser.add_argument('-s', '--gui',action='store_true', default=False,
+                            help="Show the GUI (WIP)")
         self.args = parser.parse_args()
 
     def parse_config(self):
@@ -631,7 +631,7 @@ class Penger:
         self.parse_config()
         self.parse_timesheet()
 
-        if self.args.silent:
+        if self.args.gui:
             self.generate_PDF()
             self.extra_actions()
             self.summation()
@@ -796,7 +796,7 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     penger = Penger()
 
-    if penger.args.silent:
+    if penger.args.gui:
         exit(0)
 
     gui = ManagerGui(penger)
