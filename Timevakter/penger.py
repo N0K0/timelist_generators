@@ -240,10 +240,9 @@ class Penger:
                 date_end = date_end + timedelta(days=end_day + 1) - timedelta(seconds=1)
             elif self.args.m:
                 date_start = datetime(date_today.year, self.args.m, 1)
-
                 end_day = calendar.monthrange(date_today.year, self.args.m)[1]
-                date_end = datetime(date_start.year, self.args.m + 1, 1)
-                date_end = date_end + timedelta(days=end_day + 1) - timedelta(seconds=1)
+                date_end = datetime(date_start.year, self.args.m, 1)
+                date_end = date_end + timedelta(days=end_day) - timedelta(seconds=1)
             elif self.args.y:
                 date_start = datetime(self.args.y, 1, 1)
                 end_day = calendar.monthrange(self.args.y, date_today.month)[1]

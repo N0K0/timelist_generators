@@ -106,7 +106,7 @@ class Penger:
         parser.add_argument('-o', metavar='--output', type=str, default=None, help="name of the PDF file")
         parser.add_argument('-c', metavar='--config', type=str, default=".timerc",
                             help="Specify a config file. Use this if you for example got multiple jobs")
-        parser.add_argument('-s', '--gui',action='store_true', default=False,
+        parser.add_argument('-s', '--gui',action='store_true', default=True,
                             help="Show the GUI (WIP)")
         self.args = parser.parse_args()
 
@@ -263,9 +263,8 @@ class Penger:
                 date_end = date_end + timedelta(days=end_day) - timedelta(seconds=1)
             elif self.args.m:
                 date_start = datetime(date_today.year, self.args.m, 1)
-
                 end_day = calendar.monthrange(date_today.year, self.args.m)[1]
-                date_end = datetime(date_start.year, self.args.m + 1, 1)
+                date_end = datetime(date_start.year, self.args.m , 1)
                 date_end = date_end + timedelta(days=end_day) - timedelta(seconds=1)
             elif self.args.y:
                 date_start = datetime(self.args.y, 1, 1)
